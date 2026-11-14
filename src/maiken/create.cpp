@@ -80,12 +80,14 @@ class CLIHandler : public Constants {
                                        Arg('g', STR_DEBUG, ArgType::MAYBE),
                                        Arg('G', STR_GET, ArgType::STRING),
                                        Arg('h', STR_HELP),
+                                       Arg('i', STR_INSTALL, ArgType::STRING),
                                        Arg('j', STR_JARG, ArgType::STRING),
                                        Arg('K', STR_STATIC),
                                        Arg('l', STR_LINKER, ArgType::STRING),
                                        Arg('L', STR_ALINKER, ArgType::STRING),
                                        Arg('m', STR_MOD, ArgType::STRING),
                                        Arg('M', STR_MAIN, ArgType::STRING),
+                                       Arg('N', STR_NAME, ArgType::STRING),
 #if defined(MKN_WITH_MKN_RAM) && defined(MKN_WITH_IO_CEREAL)
                                        Arg('n', STR_NODES, ArgType::MAYBE),
 #endif  // MKN_WITH_MKN_RAM) && MKN_WITH_IO_CEREAL
@@ -345,6 +347,14 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
   }
   if (profiles.empty()) profiles.emplace_back("");
 
+  // before the root applications are made: their setup uses them
+  //  -i: every selected profile installs there, -N: one build directory, so one profile
+  if (args.has(STR_INSTALL)) AppVars::INSTANCE().installOverride(args.get(STR_INSTALL));
+  if (args.has(STR_NAME)) {
+    if (profiles.size() > 1) KEXIT(1, "-N/--name needs a single profile");
+    AppVars::INSTANCE().nameOverride(args.get(STR_NAME));
+  }
+
   if (args.has(STR_DUMP)) AppVars::INSTANCE().dump(true);
   if (args.has(STR_DRY_RUN)) AppVars::INSTANCE().dryRun(true);
   if (args.has(STR_SHARED)) AppVars::INSTANCE().shar(true);
@@ -440,6 +450,10 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
 
   AppVars::INSTANCE().dependencyString(args.has(STR_DEP) ? args.get(STR_DEP) : "");
   std::vector<Application*> apps;
+  // every selected profile is a root before any is set up: one that another depends on is set
+  //  up as that dependency, and must already have the root's settings (e.g. -i)
+  for (auto profile : profiles)
+    Applications::INSTANCE().getOrCreateRoot(project, profile, /*setup = */ false);
   for (auto profile : profiles) {
     auto* app = Applications::INSTANCE().getOrCreateRoot(project, profile);
     auto& a = *app;
