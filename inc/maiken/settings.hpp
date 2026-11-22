@@ -141,12 +141,13 @@ class Settings : public mkn::kul::yaml::File, public Constants {
   mkn::kul::hash::map::S2S ps;
   Findables findables_;
   mkn::kul::hash::map::S2S binaries_;
-  bool envSkipped = false;  // an earlier file of the chain has an env:
+  std::vector<bool> envUsed;  // per env: entry, see ENV_USED, empty: all
 
   void resolveProperties() KTHROW(SettingsException);
   void preorder(std::vector<Settings*>& files);  // this file, then each super: file's chain
   void mergeSuperProperties();
-  std::vector<mkn::kul::env::Var> envVars() const;  // this file's env:
+  // sets this file's env: entries used, each in turn: one may use the value the one before set
+  void applyEnv() const;
   void resolveFindables() KTHROW(SettingsException);
   void resolveBinaries() KTHROW(SettingsException);
   static std::unique_ptr<Settings> instance;

@@ -7,6 +7,7 @@ int main() {
     char const* v = std::getenv(name);
     return v ? v : "";
   };
-  std::cout << "SS_WHO=" << get("SS_WHO") << " SS_B=" << get("SS_B") << std::endl;
+  std::cout << "SS_WHO=" << get("SS_WHO") << " SS_B=" << get("SS_B")
+            << " SS_STACK=" << get("SS_STACK") << std::endl;
   return 0;
 }

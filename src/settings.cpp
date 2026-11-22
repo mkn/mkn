@@ -154,12 +154,10 @@ maiken::Settings::Settings(std::filesystem::path const& file_) : mkn::kul::yaml:
   if (loading.outermost) {
     std::vector<Settings*> files;
     preorder(files);
-    // env: is the first file's to have one, the files after it leave theirs out
-    bool found = false;
-    for (auto* f : files) {
-      f->envSkipped = found;
-      found = found || static_cast<bool>(f->root()[STR_ENV]);
-    }
+    std::vector<std::vector<YAML::Node>> envs;
+    for (auto const* f : files) envs.push_back(ENV_ENTRIES(f->root()[STR_ENV]));
+    auto used = ENV_USED(envs);
+    for (std::size_t i = 0; i < files.size(); ++i) files[i]->envUsed = std::move(used[i]);
     // from the end of the chain up, each file after the files it extends: their properties, then
     //  its env: and properties; this file's own env: and properties follow in POST_CONSTRUCT
     for (auto it = files.rbegin(); it != files.rend(); ++it) {
@@ -210,16 +208,8 @@ maiken::Settings& maiken::Settings::INSTANCE() KTHROW(mkn::kul::Exit) {
 }
 
 void maiken::Settings::resolveProperties() KTHROW(SettingsException) {
-  ps.setDeletedKey("--DELETED--");
-  for (YAML::const_iterator it = root()[STR_PROPERTY].begin(); it != root()[STR_PROPERTY].end();
-       ++it)
-    ps[it->first.as<std::string>()] = it->second.as<std::string>();
-  for (YAML::const_iterator it = root()[STR_PROPERTY].begin(); it != root()[STR_PROPERTY].end();
-       ++it) {
-    std::string s = Properties::RESOLVE(*this, it->second.as<std::string>());
-    if (ps.count(it->first.as<std::string>())) ps.erase(it->first.as<std::string>());
-    ps[it->first.as<std::string>()] = s;
-  }
+  Properties::RESOLVE_OWN(root()[STR_PROPERTY], ps, file(),
+                          [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
 }
 
 mkn::kul::File maiken::Settings::RESOLVE(std::string const& s, Settings const* settings)
@@ -261,23 +251,19 @@ mkn::kul::env::Var maiken::Settings::PARSE_ENV_NODE(YAML::Node const& n, Setting
   return maiken::PARSE_ENV_NODE(n, settings, "settings file");
 }
 
-std::vector<mkn::kul::env::Var> maiken::Settings::envVars() const {
-  std::vector<mkn::kul::env::Var> evs;
-  auto const node = root()[STR_ENV];
-  if (!node) return evs;
-  if (node.IsScalar())
-    for (auto const& line : mkn::kul::String::LINES(node.Scalar()))
-      evs.emplace_back(PARSE_ENV_NODE(decltype(node){line}, *this));
-  else
-    for (auto const& c : node) evs.emplace_back(PARSE_ENV_NODE(c, *this));
-  return evs;
+void maiken::Settings::applyEnv() const {
+  auto const entries = ENV_ENTRIES(root()[STR_ENV]);
+  for (std::size_t i = 0; i < entries.size(); ++i)
+    if (envUsed.empty() || envUsed[i]) {
+      auto const ev = PARSE_ENV_NODE(entries[i], *this);
+      mkn::kul::env::SET(ev.name(), ev.toString().c_str());
+    }
 }
 
 void maiken::Settings::POST_CONSTRUCT(Settings* settings_ptr) {
   auto& settings = settings_ptr != nullptr ? *settings_ptr : Settings::INSTANCE();
 
-  if (!settings.envSkipped)
-    for (auto const& ev : settings.envVars()) mkn::kul::env::SET(ev.name(), ev.toString().c_str());
+  settings.applyEnv();
 
   settings.resolveProperties();
   if (!settings_ptr) settings.resolveFindables();

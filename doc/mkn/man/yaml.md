@@ -194,6 +194,9 @@ System properties, and any given with `-P name=value`, are used before a project
 of the same name. `-P` is how one build overrides a project's value. A project property that a
 system property hides is reported once (`WARNING: ... is a built-in, its value here is not used`).
 
+A project's property using its own name, `a: pre.${a}`, extends the value `a` has in its
+`super:` project or the settings files, and is an error if neither has one.
+
 System properties never end in `.version`: a project names its dependencies' versions
 `<dependency>.version` (e.g. `parse.yaml.version: 0.8.0`, used as `parse.yaml#${parse.yaml.version}`)
 without meeting one, and `-P parse.yaml.version=0.8.1` tries another for one build.

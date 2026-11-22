@@ -154,11 +154,11 @@ From the first file of the chain to the last, in the depth first order above:
 | Entry | Across the chain |
 |---|---|
 | `file:` | per file type and key (`compiler`, `linker`, `archiver`) the first file setting it wins, so a file can set just one key for a type and take the rest from the files it extends |
-| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next |
+| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next; a property using its own name, `a: pre.${a}`, extends the value it has in the files it extends, an error if none of them has one |
 | `local:` `repo` / `mod-repo` | the first file that sets it |
 | `remote:` `repo` / `mod-repo` | the first file that sets it, then the built-in defaults (`MKN_REMOTE_REPO` / `MKN_REMOTE_MOD`) |
 | `inc:`, `path:` | every file's, the first file's first |
-| `env:` | the first file that has one, the `env:` of the files after it is left out: a file with an `env:` repeats what it wants of theirs, e.g. the default Windows settings' `PATH` entry for `cl` |
+| `env:` | per variable, the entries up to the first that replaces it: `mode: replace`, or `NAME=value` without `$NAME` / `${NAME}`. Those after it are left out, those before build on it, `prepend` / `append` or `NAME=x:$NAME`, nearest first: a file prepending to `PATH` keeps the default Windows settings' `PATH` entry for `cl`, one replacing it does not. Within a file entries apply in order, the last for a variable is the nearest |
 | `compiler:` `mask:` | every file's |
 | `find:` | every file's, per name the first file's directories first |
 | `bin:` | per project, the first file naming it |

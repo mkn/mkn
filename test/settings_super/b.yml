@@ -1,9 +1,10 @@
-# env: left out, a has one
+# SS_WHO and SS_STACK are left out, a and shared replace them first
 super: shared
 property:
   who: b
   deep: b
   only_b: b
+  stack: b
 env:
   - name: SS_WHO
     mode: replace
@@ -11,3 +12,4 @@ env:
   - name: SS_B
     mode: replace
     value: b
+  - SS_STACK=b:$SS_STACK

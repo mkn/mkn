@@ -226,14 +226,22 @@ SETTINGS_SUPER_DIR = os.path.join(ROOT, "test", "settings_super")
 def settings_super(mkn_bin, env=None):
     """test/settings_super: dry runs with super: lists, the properties on the compile line show
     which file each came from: top.yml (super: a b, a searched with the files it extends before b,
-    shared.yml under both searched once), cycle.yml (a file extending it again is left out) and
-    self.yml (a file extending itself is an error); top and cycle are then built and run, the app
-    prints the env: of the first file of the chain to have one, b.yml's is left out"""
+    shared.yml under both searched once, a property using itself extends the one before it),
+    cycle.yml (a file extending it again is left out), self.yml (a file extending itself is an
+    error) and self_property.yml (a property using itself with none before it is an error); top
+    and cycle are then built and run, the app prints env: per variable up to the first file
+    replacing it, prepends and $VAR stacked on it"""
     env = dict(os.environ, **(env or {}))
     expected = {
-        "top": ("-DWHO=a -DDEEP=shared -DONLY_B=b -DONLY_SHARED=shared", "SS_WHO=a SS_B="),
-        "cycle": ("-DWHO=cycle -DDEEP=shared -DONLY_B=cycle -DONLY_SHARED=shared",
-                  "SS_WHO=cycle SS_B="),
+        "top": ("-DWHO=a -DDEEP=shared -DONLY_B=b -DONLY_SHARED=shared"
+                " -DSTACK=project.top.a.shared",
+                f"SS_WHO=a SS_B=b SS_STACK=top:a{os.pathsep}shared.end"),
+        "cycle": ("-DWHO=cycle -DDEEP=shared -DONLY_B=cycle -DONLY_SHARED=shared"
+                  " -DSTACK=project.shared", "SS_WHO=cycle SS_B= SS_STACK=shared.end"),
+    }
+    errors = {
+        "self": "super cannot reference itself",
+        "self_property": "Property : 'self_property' in",
     }
 
     def mkn(*cmd):
@@ -244,11 +252,11 @@ def settings_super(mkn_bin, env=None):
         print(result.stdout, flush=True)
         return result
 
-    for name in ("top", "cycle", "self"):
+    for name in ("top", "cycle", "self", "self_property"):
         x = os.path.join(SETTINGS_SUPER_DIR, name).replace("\\", "/")
         result = mkn("build", "-R", "-x", x)
-        if name == "self":
-            ok = result.returncode != 0 and "super cannot reference itself" in result.stdout
+        if name in errors:
+            ok = result.returncode != 0 and errors[name] in result.stdout
         else:
             ok = result.returncode == 0 and expected[name][0] in result.stdout
             if ok:

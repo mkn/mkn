@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mkn/kul/except.hpp"
 #include "maiken.hpp"  // IWYU pragma: keep
 #include "maiken/app.hpp"
+#include "maiken/env.hpp"
 #include "maiken/global.hpp"
 #include "maiken/module.hpp"
 #include "maiken/project.hpp"
@@ -128,13 +129,7 @@ mkn::kul::hash::set::String maiken::Application::inactiveMains() const {
 }
 
 void maiken::Application::populateMaps(YAML::Node const& n) KTHROW(mkn::kul::Exception) {
-  if (n[STR_ENV]) {
-    if (n[STR_ENV].IsScalar()) {
-      for (auto const& line : mkn::kul::String::LINES(n[STR_ENV].Scalar()))
-        evs.emplace_back(PARSE_ENV_NODE(decltype(n[STR_ENV]){line}, *this));
-    } else
-      for (auto const& c : n[STR_ENV]) evs.emplace_back(PARSE_ENV_NODE(c, *this));
-  }
+  for (auto const& entry : ENV_ENTRIES(n[STR_ENV])) evs.emplace_back(PARSE_ENV_NODE(entry, *this));
 
   if (n[STR_ARG])
     for (auto const& o : mkn::kul::String::LINES(n[STR_ARG].Scalar()))

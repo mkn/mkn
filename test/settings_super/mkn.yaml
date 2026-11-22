@@ -1,4 +1,6 @@
 # settings files with super: lists, see res/ci/build.py settings_super
 name: settings_super
 main: main.cpp
-arg: -DWHO=${who} -DDEEP=${deep} -DONLY_B=${only_b} -DONLY_SHARED=${only_shared}
+property:
+  stack: project.${stack}
+arg: -DWHO=${who} -DDEEP=${deep} -DONLY_B=${only_b} -DONLY_SHARED=${only_shared} -DSTACK=${stack}
