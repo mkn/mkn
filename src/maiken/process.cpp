@@ -28,6 +28,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
+#include "mkn/kul/bon/yaml.hpp"
 #include "mkn/kul/dbg.hpp"
 #include "maiken/app.hpp"
 #include "maiken/global.hpp"
@@ -74,7 +75,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
     for (auto mod = app.modDeps.begin(); mod != app.modDeps.end(); ++mod)
       app.mods.push_back(ModuleLoader::LOAD(**mod));
     for (auto& modLoader : app.mods)
-      modLoader->module()->init(app.context(), app.modInit(modLoader->app()));
+      modLoader->module()->init(app.context(),
+                                mkn::kul::bon::from_yaml(app.modInit(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
   };
 
@@ -102,7 +104,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
     if (cmds.count(STR_BUILD) || cmds.count(STR_COMPILE)) {
 #if MKN_WITH_MKN_MOD
       for (auto& modLoader : app.mods)
-        modLoader->module()->compile(app.context(), app.modCompile(modLoader->app()));
+        modLoader->module()->compile(app.context(),
+                                     mkn::kul::bon::from_yaml(app.modCompile(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
 
       if (work) app.compile(objects);
@@ -111,7 +114,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
 #if MKN_WITH_MKN_MOD
       if (work)
         for (auto& modLoader : app.mods)
-          modLoader->module()->link(app.context(), app.modLink(modLoader->app()));
+          modLoader->module()->link(app.context(),
+                                    mkn::kul::bon::from_yaml(app.modLink(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
       app.findObjects(objects);
       app.link(objects);
@@ -167,7 +171,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
   if (cmds.count(STR_TEST)) {
 #if MKN_WITH_MKN_MOD
     for (auto& modLoader : mods)
-      modLoader->module()->test(this->context(), this->modTest(modLoader->app()));
+      modLoader->module()->test(this->context(),
+                                mkn::kul::bon::from_yaml(this->modTest(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
     test();
   }
@@ -175,7 +180,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
     pack();
 #if MKN_WITH_MKN_MOD
     for (auto& modLoader : mods)
-      modLoader->module()->pack(this->context(), this->modPack(modLoader->app()));
+      modLoader->module()->pack(this->context(),
+                                mkn::kul::bon::from_yaml(this->modPack(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
   }
   if (CommandStateMachine::INSTANCE().main() && (cmds.count(STR_RUN) || cmds.count(STR_DBG)))
