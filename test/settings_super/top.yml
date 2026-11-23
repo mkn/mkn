@@ -1,0 +1,5 @@
+# a and the files it extends are searched before b
+super: a b
+property:
+  stack: top.${stack}
+env: SS_STACK=top:$SS_STACK

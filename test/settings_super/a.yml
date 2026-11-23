@@ -1,0 +1,10 @@
+super: shared
+property:
+  who: a
+  stack: a.${stack}
+env:
+  - name: SS_WHO
+    mode: replace
+    value: a
+  - name: SS_STACK
+    value: a

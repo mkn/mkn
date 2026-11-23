@@ -49,8 +49,12 @@ jobs:
         pins=
         for key in $(yq '.property // {} | to_entries | .[] | select(.key == "*.version" and .value == "latest") | .key' mkn.yaml); do
           dep=${key%.version}
-          pin=$(git ls-remote --tags --refs --sort=-v:refname "https://github.com/mkn/$dep" \
-            | sed -n 's#.*refs/tags/\([0-9]*\.[0-9]*\.[0-9]*\)$#\1#p' | head -1)
+          # modules (github.com/mkn-mod) have no releases: their latest branch, left as is
+          if git ls-remote "https://github.com/mkn-mod/$dep" > /dev/null 2>&1; then
+            echo "$key: a module, stays latest"; continue
+          fi
+          tags=$(git ls-remote --tags --refs --sort=-v:refname "https://github.com/mkn/$dep") || tags=
+          pin=$(sed -n 's#.*refs/tags/\([0-9]*\.[0-9]*\.[0-9]*\)$#\1#p' <<< "$tags" | head -1)
           if [ -z "$pin" ]; then echo "no release tag found for $dep"; exit 1; fi
           pins="${pins:+$pins,}$key=$pin"
         done

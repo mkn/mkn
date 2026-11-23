@@ -37,9 +37,71 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maiken/defs.hpp"
 #include "yaml-cpp/yaml.h"
 
+#include <algorithm>
+#include <cctype>
 #include <cstddef>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace maiken {
+
+// env: entries, a list or one per line of a scalar
+inline std::vector<YAML::Node> ENV_ENTRIES(YAML::Node const& env) {
+  std::vector<YAML::Node> entries;
+  if (!env) return entries;
+  if (env.IsScalar())
+    for (auto const& line : mkn::kul::String::LINES(env.Scalar())) entries.emplace_back(line);
+  else
+    for (auto const& entry : env) entries.push_back(entry);
+  return entries;
+}
+
+// the variable an env: entry sets, NAME=value or name:
+inline std::string ENV_NAME(YAML::Node const& entry) {
+  auto name = entry.IsScalar() ? mkn::kul::String::ESC_SPLIT(entry.Scalar(), '=')[0]
+                               : entry[Constants::STR_NAME].Scalar();
+  mkn::kul::String::TRIM(name);
+#if defined(_WIN32)
+  std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) {
+    return static_cast<char>(std::toupper(c));
+  });  // Path is PATH
+#endif
+  return name;
+}
+
+// true if an env: entry builds on its variable's value before it: mode prepend (the default) or
+//  append, or NAME=value using $NAME or ${NAME}; else it replaces it
+inline bool ENV_EXTENDS(YAML::Node const& entry) {
+  if (!entry.IsScalar())
+    return !entry[Constants::STR_MODE] ||
+           entry[Constants::STR_MODE].Scalar() != Constants::STR_REPLACE;
+  auto const bits = mkn::kul::String::ESC_SPLIT(entry.Scalar(), '=');
+  if (bits.size() < 2) return false;
+  std::string value = bits[1];
+  for (std::size_t i = 2; i < bits.size(); ++i) value += "=" + bits[i];
+  for (auto const& ref : {"$" + bits[0], "${" + bits[0] + "}"})
+    if (Properties::FIND_UNESCAPED(value, ref) != std::string::npos) return true;
+  return false;
+}
+
+// which env: entries of a chain of files are used, the first file's first: per variable those up
+//  to the first that replaces it; within a file the last entry for a variable is the first
+inline std::vector<std::vector<bool>> ENV_USED(std::vector<std::vector<YAML::Node>> const& chain) {
+  std::vector<std::vector<bool>> used;
+  std::unordered_set<std::string> replaced;
+  for (auto const& entries : chain) {
+    auto& u = used.emplace_back(entries.size(), true);
+    for (std::size_t i = entries.size(); i-- > 0;) {
+      auto const name = ENV_NAME(entries[i]);
+      if (replaced.count(name))
+        u[i] = false;
+      else if (!ENV_EXTENDS(entries[i]))
+        replaced.insert(name);
+    }
+  }
+  return used;
+}
 
 template <typename HasProperties>
 mkn::kul::env::Var PARSE_ENV_NODE(YAML::Node const& n, HasProperties const& hasProperties,
@@ -50,14 +112,24 @@ mkn::kul::env::Var PARSE_ENV_NODE(YAML::Node const& n, HasProperties const& hasP
 
     for (std::size_t i = 2; i < bits.size(); ++i) bits[1] += "=" + bits[i];
 
-    auto replace = [](std::string const& n, std::string& in, std::string f) {
-      auto pos = in.find(f);
-      if (pos != std::string::npos)
-        if (pos == 0 || (pos > 0 && in[pos - 1] != '\\'))
-          mkn::kul::String::REPLACE(in, f, std::string(mkn::kul::env::GET(n.c_str())));
+    // every unescaped $NAME (the whole name: not $NAME_X) and ${NAME}, the value set before
+    auto replace = [](std::string const& n, std::string& in, std::string const& f,
+                      bool const whole) {
+      std::string const value = mkn::kul::env::GET(n.c_str());
+      for (auto pos = Properties::FIND_UNESCAPED(in, f); pos != std::string::npos;
+           pos = Properties::FIND_UNESCAPED(in, f, pos)) {
+        if (auto const end = pos + f.size();
+            whole && end < in.size() &&
+            (std::isalnum(static_cast<unsigned char>(in[end])) || in[end] == '_')) {
+          pos = end;
+          continue;
+        }
+        in.replace(pos, f.size(), value);
+        pos += value.size();
+      }
     };
-    replace(bits[0], bits[1], "$" + bits[0]);
-    replace(bits[0], bits[1], "${" + bits[0] + "}");
+    replace(bits[0], bits[1], "$" + bits[0], true);
+    replace(bits[0], bits[1], "${" + bits[0] + "}", false);
 
     return env::Var(bits[0], Properties::RESOLVE(hasProperties, bits[1]), env::Var::Mode::REPL);
   }

@@ -1,15 +1,17 @@
 #! clean build test -qdtKw mkn.mod,mkn.ram[https] -W 9
 
 name: mkn
-version: 0.1.1  # merged into latest: tagged and published, a pre-release (-beta.1) never marked latest
+version: 0.2.0  # on the latest branch a release, e.g. 0.1.0: merged there it is tagged and published
 property:
-  DATE: 21_NOV_2026
+  DATE: 23_NOV_2026
   # dependency versions, only here: master on master, latest on the latest branch, releases pinned in tags
   mkn.kul.version: latest
   parse.yaml.version: latest
   mkn.mod.version: latest
   mkn.ram.version: latest
   self.deps: mkn.kul#${mkn.kul.version}
+  clang.format.version: latest
+  cpp.iwyu.version: latest
 
 parent: bin
 mode: none
@@ -64,9 +66,10 @@ profile:
   mode: static
 
 # Same as "bin", but links parse.yaml as a shared library instead of static +
-# exported (-rdynamic) - used to prove modules (which all take a YAML::Node)
-# still dlopen() cleanly when their yaml-cpp dependency is a separate .so
-# rather than baked into this binary. See test_mod's mkn.yaml/mod.cpp.
+# exported (-rdynamic) - used to prove a module with its own yaml-cpp dependency
+# (test_mod's test/mod/dep) still dlopen()s cleanly when that is a separate .so
+# rather than baked into this binary. Modules' configuration itself is a
+# mkn::kul::bon::Node (no yaml-cpp). See test_mod's mkn.yaml/mod.cpp.
 - name: bin_shared
   parent: mod
   mode: none
@@ -100,6 +103,7 @@ profile:
   mode: none
   mod:
   - name: cpp.iwyu
+    version: ${cpp.iwyu.version}
     compile:
       paths: inc
       # fragments of maiken/dist.hpp, not standalone headers
@@ -117,7 +121,7 @@ profile:
 
 - name: format
   mod: |
-    clang.format{init:{style: file, paths: .}}
+    clang.format#latest{init:{style: file, paths: .}}
 
 
 - name: github
