@@ -36,8 +36,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maiken/defs.hpp"
 #include "mkn/kul/except.hpp"
 #include "mkn/kul/map.hpp"
+#include "yaml-cpp/yaml.h"
 
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 
@@ -55,7 +58,40 @@ class Properties : public Constants {
   static std::string RESOLVE(Application const& app, std::string const& s)
       KTHROW(mkn::kul::Exception);
   static std::string RESOLVE(Settings const& app, std::string const& s) KTHROW(mkn::kul::Exception);
+
+  // the first f in s from pos not preceded by a backslash, or npos
+  static std::size_t FIND_UNESCAPED(std::string const& s, std::string const& f,
+                                    std::size_t pos = 0);
+  // the value of a property maiken sets itself (mkn.bin.key, mkn.with.bin), which a settings
+  //  property: using its own name extends when no file before it sets it
+  static std::optional<std::string> BUILTIN(std::string const& key);
+  // true if value uses ${key}, so extends the value of key it overrides
+  static bool EXTENDS(std::string const& key, std::string const& value);
+  // value with each ${key} replaced by the value key has before it, in ps: from an earlier
+  //  file, a super: file or the settings, else its BUILTIN value; an error if there is none
+  static std::string EXTEND(std::string const& key, std::string value,
+                            mkn::kul::hash::map::S2S const& ps, std::string const& file)
+      KTHROW(mkn::kul::Exception);
+  // a property: node's own entries over ps, which holds those it extends
+  static void RESOLVE_OWN(YAML::Node const& node, mkn::kul::hash::map::S2S& ps,
+                          std::string const& file, auto const& resolve) KTHROW(mkn::kul::Exception);
 };
+
+void Properties::RESOLVE_OWN(YAML::Node const& node, mkn::kul::hash::map::S2S& ps,
+                             std::string const& file, auto const& resolve)
+    KTHROW(mkn::kul::Exception) {
+  ps.setDeletedKey("--DELETED--");
+  for (auto it = node.begin(); it != node.end(); ++it) {
+    auto const k = it->first.as<std::string>();
+    ps[k] = EXTEND(k, it->second.as<std::string>(), ps, file);
+  }
+  for (auto it = node.begin(); it != node.end(); ++it) {
+    auto const k = it->first.as<std::string>();
+    auto const s = resolve(ps.at(k));
+    ps.erase(k);
+    ps[k] = s;
+  }
+}
 
 }  // namespace maiken
 

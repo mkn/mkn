@@ -220,6 +220,61 @@ def rpath(mkn_bin, args, env=None):
         print(f"PASS rpath {name}", flush=True)
 
 
+SETTINGS_SUPER_DIR = os.path.join(ROOT, "test", "settings_super")
+
+
+def settings_super(mkn_bin, env=None):
+    """test/settings_super: dry runs with super: lists, the properties on the compile line show
+    which file each came from: top.yml (super: a b, a searched with the files it extends before b,
+    shared.yml under both searched once, a property using itself extends the one before it, in
+    b.yml the one from shared.yml), b.yml alone, cycle.yml (a file extending it again is left out),
+    self.yml (a file extending itself is an error), self_property.yml (a property using itself with
+    none before it is an error) and many_supers.yml (more than 5 super: files is an error); top, b
+    and cycle are then built and run, the app prints env: per variable up to the first file
+    replacing it, prepends and $VAR stacked on it (every reference to it); b.yml's mkn.bin.key
+    extends the built-in key (mkn -vv)"""
+    env = dict(os.environ, **(env or {}))
+    expected = {
+        "top": ("-DWHO=a -DDEEP=shared -DONLY_B=b -DONLY_SHARED=shared"
+                " -DSTACK=project.top.a.shared",
+                f"SS_WHO=a SS_B=b.b.b SS_STACK=top:a{os.pathsep}shared.end"),
+        "b": ("-DWHO=b -DDEEP=b -DONLY_B=b -DONLY_SHARED=shared -DSTACK=project.b.shared",
+              "SS_WHO=b SS_B=b.b.b SS_STACK=b:shared.end"),
+        "cycle": ("-DWHO=cycle -DDEEP=shared -DONLY_B=cycle -DONLY_SHARED=shared"
+                  " -DSTACK=project.shared", "SS_WHO=cycle SS_B= SS_STACK=shared.end"),
+    }
+    errors = {
+        "self": "super cannot reference itself",
+        "self_property": "Property : 'self_property' in",
+        "many_supers": "more than 5 super: files",
+    }
+
+    def mkn(*cmd):
+        cmd = [mkn_bin, *cmd]
+        print(f"+ [{SETTINGS_SUPER_DIR}] {' '.join(cmd)}", flush=True)
+        result = subprocess.run(cmd, cwd=SETTINGS_SUPER_DIR, stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT, text=True, env=env)
+        print(result.stdout, flush=True)
+        return result
+
+    for name in ("top", "b", "cycle", "self", "self_property", "many_supers"):
+        x = os.path.join(SETTINGS_SUPER_DIR, name).replace("\\", "/")
+        result = mkn("build", "-R", "-x", x)
+        if name in errors:
+            ok = result.returncode != 0 and errors[name] in result.stdout
+        else:
+            ok = result.returncode == 0 and expected[name][0] in result.stdout
+            if ok:
+                ran = mkn("clean", "build", "run", "-x", x)
+                ok = ran.returncode == 0 and expected[name][1] in ran.stdout
+            if ok and name in ("top", "b"):
+                ok = ";ss\n" in mkn("-vv", "-x", x).stdout.replace("\r", "")
+        if not ok:
+            print(f"FAILED settings_super {name}: exit {result.returncode}", file=sys.stderr)
+            sys.exit(1)
+        print(f"PASS settings_super {name}", flush=True)
+
+
 def nix_test(std_args, env, full):
     """ubuntu_gcc / ubuntu_clang / manylinux_gcc."""
     a = f'-a "{std_args}"'
@@ -230,6 +285,7 @@ def nix_test(std_args, env, full):
     manifest(built("mod"), std_args, env)
     prebuilt(built("mod"), "bin_nix", "-std=c++20")
     rpath(built("mod"), std_args, env)
+    settings_super(built("mod"), env)
 
     if not full:
         return
@@ -255,6 +311,7 @@ def job_macos_clang():
     manifest(built("mod"), "-std=c++20")
     prebuilt(built("mod"), "bin_osx", "-std=c++20")
     rpath(built("mod"), "-std=c++20")
+    settings_super(built("mod"))
 
 
 def job_win_cl():
@@ -267,6 +324,7 @@ def job_win_cl():
     manifest(built("mod"), std, env)
     prebuilt(built("mod"), "bin_win", std)
     rpath(built("mod"), std, env)
+    settings_super(built("mod"), env)
 
 
 def job_win_clang():

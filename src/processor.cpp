@@ -29,6 +29,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "maiken.hpp"  // IWYU pragma: keep
+#include "mkn/kul/bon/yaml.hpp"
 #include "mkn/kul/threads.hpp"
 #include "maiken/app.hpp"
 #include "maiken/compiler.hpp"
@@ -103,7 +104,8 @@ void maiken::Processor::process(std::vector<Application*> apps) {
 
 #if MKN_WITH_MKN_MOD
       for (auto& modLoader : app.mods)
-        modLoader->module()->compile(app.context(), app.modCompile(modLoader->app()));
+        modLoader->module()->compile(app.context(),
+                                     mkn::kul::bon::from_yaml(app.modCompile(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
 
       app_info.emplace(apP, std::make_shared<ProcInfo>(app));
@@ -136,7 +138,8 @@ void maiken::Processor::process(std::vector<Application*> apps) {
       auto& app = *apP;
 #if MKN_WITH_MKN_MOD
       for (auto& modLoader : app.mods)
-        modLoader->module()->link(app.context(), app.modLink(modLoader->app()));
+        modLoader->module()->link(app.context(),
+                                  mkn::kul::bon::from_yaml(app.modLink(modLoader->app())));
 #endif  // MKN_WITH_MKN_MOD
       app.findObjects(objects);
       app.link(objects);
