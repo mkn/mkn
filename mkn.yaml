@@ -10,6 +10,8 @@ property:
   mkn.mod.version: master
   mkn.ram.version: master
   self.deps: mkn.kul#${mkn.kul.version}
+  clang.format.version: master
+  cpp.iwyu.version: master
 
 parent: bin
 mode: none
@@ -101,6 +103,7 @@ profile:
   mode: none
   mod:
   - name: cpp.iwyu
+    version: ${cpp.iwyu.version}
     compile:
       paths: inc
       # fragments of maiken/dist.hpp, not standalone headers
@@ -118,7 +121,7 @@ profile:
 
 - name: format
   mod: |
-    clang.format{init:{style: file, paths: .}}
+    clang.format#master{init:{style: file, paths: .}}
 
 
 - name: github
