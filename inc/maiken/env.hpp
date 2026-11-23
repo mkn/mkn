@@ -112,12 +112,24 @@ mkn::kul::env::Var PARSE_ENV_NODE(YAML::Node const& n, HasProperties const& hasP
 
     for (std::size_t i = 2; i < bits.size(); ++i) bits[1] += "=" + bits[i];
 
-    auto replace = [](std::string const& n, std::string& in, std::string const& f) {
-      if (auto const pos = Properties::FIND_UNESCAPED(in, f); pos != std::string::npos)
-        in.replace(pos, f.size(), mkn::kul::env::GET(n.c_str()));
+    // every unescaped $NAME (the whole name: not $NAME_X) and ${NAME}, the value set before
+    auto replace = [](std::string const& n, std::string& in, std::string const& f,
+                      bool const whole) {
+      std::string const value = mkn::kul::env::GET(n.c_str());
+      for (auto pos = Properties::FIND_UNESCAPED(in, f); pos != std::string::npos;
+           pos = Properties::FIND_UNESCAPED(in, f, pos)) {
+        if (auto const end = pos + f.size();
+            whole && end < in.size() &&
+            (std::isalnum(static_cast<unsigned char>(in[end])) || in[end] == '_')) {
+          pos = end;
+          continue;
+        }
+        in.replace(pos, f.size(), value);
+        pos += value.size();
+      }
     };
-    replace(bits[0], bits[1], "$" + bits[0]);
-    replace(bits[0], bits[1], "${" + bits[0] + "}");
+    replace(bits[0], bits[1], "$" + bits[0], true);
+    replace(bits[0], bits[1], "${" + bits[0] + "}", false);
 
     return env::Var(bits[0], Properties::RESOLVE(hasProperties, bits[1]), env::Var::Mode::REPL);
   }

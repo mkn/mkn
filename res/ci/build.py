@@ -226,22 +226,27 @@ SETTINGS_SUPER_DIR = os.path.join(ROOT, "test", "settings_super")
 def settings_super(mkn_bin, env=None):
     """test/settings_super: dry runs with super: lists, the properties on the compile line show
     which file each came from: top.yml (super: a b, a searched with the files it extends before b,
-    shared.yml under both searched once, a property using itself extends the one before it),
-    cycle.yml (a file extending it again is left out), self.yml (a file extending itself is an
-    error) and self_property.yml (a property using itself with none before it is an error); top
+    shared.yml under both searched once, a property using itself extends the one before it, in
+    b.yml the one from shared.yml), b.yml alone, cycle.yml (a file extending it again is left out),
+    self.yml (a file extending itself is an error), self_property.yml (a property using itself with
+    none before it is an error) and many_supers.yml (more than 5 super: files is an error); top, b
     and cycle are then built and run, the app prints env: per variable up to the first file
-    replacing it, prepends and $VAR stacked on it"""
+    replacing it, prepends and $VAR stacked on it (every reference to it); b.yml's mkn.bin.key
+    extends the built-in key (mkn -vv)"""
     env = dict(os.environ, **(env or {}))
     expected = {
         "top": ("-DWHO=a -DDEEP=shared -DONLY_B=b -DONLY_SHARED=shared"
                 " -DSTACK=project.top.a.shared",
-                f"SS_WHO=a SS_B=b SS_STACK=top:a{os.pathsep}shared.end"),
+                f"SS_WHO=a SS_B=b.b.b SS_STACK=top:a{os.pathsep}shared.end"),
+        "b": ("-DWHO=b -DDEEP=b -DONLY_B=b -DONLY_SHARED=shared -DSTACK=project.b.shared",
+              "SS_WHO=b SS_B=b.b.b SS_STACK=b:shared.end"),
         "cycle": ("-DWHO=cycle -DDEEP=shared -DONLY_B=cycle -DONLY_SHARED=shared"
                   " -DSTACK=project.shared", "SS_WHO=cycle SS_B= SS_STACK=shared.end"),
     }
     errors = {
         "self": "super cannot reference itself",
         "self_property": "Property : 'self_property' in",
+        "many_supers": "more than 5 super: files",
     }
 
     def mkn(*cmd):
@@ -252,7 +257,7 @@ def settings_super(mkn_bin, env=None):
         print(result.stdout, flush=True)
         return result
 
-    for name in ("top", "cycle", "self", "self_property"):
+    for name in ("top", "b", "cycle", "self", "self_property", "many_supers"):
         x = os.path.join(SETTINGS_SUPER_DIR, name).replace("\\", "/")
         result = mkn("build", "-R", "-x", x)
         if name in errors:
@@ -262,6 +267,8 @@ def settings_super(mkn_bin, env=None):
             if ok:
                 ran = mkn("clean", "build", "run", "-x", x)
                 ok = ran.returncode == 0 and expected[name][1] in ran.stdout
+            if ok and name in ("top", "b"):
+                ok = ";ss\n" in mkn("-vv", "-x", x).stdout.replace("\r", "")
         if not ok:
             print(f"FAILED settings_super {name}: exit {result.returncode}", file=sys.stderr)
             sys.exit(1)

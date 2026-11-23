@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 #include "mkn/kul/env.hpp"
 #include "maiken/global.hpp"
+#include "maiken/property.hpp"
 #include "maiken/settings.hpp"
 #include "mkn/kul/defs.hpp"
 #include "mkn/kul/os.hpp"
@@ -89,14 +90,17 @@ void maiken::AppVars::POST_CONSTRUCT() {
   // prebuilt binaries are matched against mkn.bin.key and used for every dependency with
   //  mkn.with.bin, see prebuilt.cpp; settings' property: can set them, MKN_WITH_BIN overrides
   //  mkn.with.bin (e.g. one env: line in a CI workflow), -P overrides both
-  pks["mkn.bin.key"] = defaultBinKey();
-  pks["mkn.with.bin"] = "0";
-  for (auto const* const k : {"mkn.bin.key", "mkn.with.bin"})
-    for (auto const* s : settings.chain())
-      if (auto const ps = s->root()[STR_PROPERTY]; ps && ps[k] && ps[k].IsScalar()) {
-        pks[k] = ps[k].Scalar();
-        break;
-      }
+  //  The settings file's own value over its super: files' (resolved when loaded, their own over
+  //  their super: files'), one using its own name extending theirs or the built-in value
+  for (auto const* const k : {"mkn.bin.key", "mkn.with.bin"}) {
+    auto const& ps = settings.properties();
+    if (auto const own = settings.root()[STR_PROPERTY]; own && own[k] && own[k].IsScalar())
+      pks[k] = Properties::EXTEND(k, own[k].Scalar(), ps, settings.file());
+    else if (ps.count(k))
+      pks[k] = ps.at(k);
+    else
+      pks[k] = *Properties::BUILTIN(k);
+  }
   if (mkn::kul::env::EXISTS("MKN_WITH_BIN"))
     pks["mkn.with.bin"] = mkn::kul::env::GET("MKN_WITH_BIN");
 }

@@ -127,10 +127,11 @@ A settings file can extend others with `super:`, and those can extend others in 
 the file given is the first of such a chain, which usually ends at the default settings file
 (`super: settings`). Without `-x` the chain starts at the default file.
 
-`super:` takes one file or several, whitespace separated (`super: a b`) or as a list. The chain is
-searched depth first: `super: a b` is this file, then `a` and every file `a` extends, then `b`
-and every file `b` extends. A file already in the chain is not searched again where it comes up a
-second time, so `a` and `b` can both extend `settings`, and it is searched once, under `a`.
+`super:` takes one file or several, at most 5, whitespace separated (`super: a b`) or as a list.
+The chain is searched depth first: `super: a b` is this file, then `a` and every file `a` extends,
+then `b` and every file `b` extends. A file already in the chain is not searched again where it
+comes up a second time, so `a` and `b` can both extend `settings`, and it is searched once, under
+`a`. Its properties still reach `b` as well (see `property:` below).
 
 ### Finding a file
 
@@ -154,11 +155,11 @@ From the first file of the chain to the last, in the depth first order above:
 | Entry | Across the chain |
 |---|---|
 | `file:` | per file type and key (`compiler`, `linker`, `archiver`) the first file setting it wins, so a file can set just one key for a type and take the rest from the files it extends |
-| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next; a property using its own name, `a: pre.${a}`, extends the value it has in the files it extends, an error if none of them has one |
+| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next, per file: each file extends every file in its `super:`, also one searched under an earlier file. A property using its own name, `a: pre.${a}`, extends the value it has in the files it extends, an error if none of them has one, except `mkn.bin.key` and `mkn.with.bin`, which then extend their built-in values |
 | `local:` `repo` / `mod-repo` | the first file that sets it |
 | `remote:` `repo` / `mod-repo` | the first file that sets it, then the built-in defaults (`MKN_REMOTE_REPO` / `MKN_REMOTE_MOD`) |
 | `inc:`, `path:` | every file's, the first file's first |
-| `env:` | per variable, the entries up to the first that replaces it: `mode: replace`, or `NAME=value` without `$NAME` / `${NAME}`. Those after it are left out, those before build on it, `prepend` / `append` or `NAME=x:$NAME`, nearest first: a file prepending to `PATH` keeps the default Windows settings' `PATH` entry for `cl`, one replacing it does not. Within a file entries apply in order, the last for a variable is the nearest |
+| `env:` | per variable, the entries up to the first that replaces it: `mode: replace`, or `NAME=value` without `$NAME` / `${NAME}` (each one in the value is the value before it, `$NAME` as a whole name: `$PATH_X` is not `$PATH`). Those after it are left out, those before build on it, `prepend` / `append` or `NAME=x:$NAME`, nearest first: a file prepending to `PATH` keeps the default Windows settings' `PATH` entry for `cl`, one replacing it does not. Within a file entries apply in order, the last for a variable is the nearest |
 | `compiler:` `mask:` | every file's |
 | `find:` | every file's, per name the first file's directories first |
 | `bin:` | per project, the first file naming it |

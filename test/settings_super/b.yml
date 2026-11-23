@@ -4,7 +4,8 @@ property:
   who: b
   deep: b
   only_b: b
-  stack: b
+  stack: b.${stack}
+  mkn.bin.key: ${mkn.bin.key};ss
 env:
   - name: SS_WHO
     mode: replace
@@ -12,4 +13,5 @@ env:
   - name: SS_B
     mode: replace
     value: b
+  - SS_B=$SS_B.${SS_B}.$SS_B
   - SS_STACK=b:$SS_STACK

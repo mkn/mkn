@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "maiken/app.hpp"
+#include "maiken/defs.hpp"
 #include "maiken/global.hpp"
 #include "maiken/project.hpp"
 #include "maiken/property.hpp"
@@ -40,6 +41,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "yaml-cpp/yaml.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_set>
@@ -68,6 +70,12 @@ std::size_t maiken::Properties::FIND_UNESCAPED(std::string const& s, std::string
   return std::string::npos;
 }
 
+std::optional<std::string> maiken::Properties::BUILTIN(std::string const& key) {
+  if (key == "mkn.bin.key") return std::string{defaultBinKey()};
+  if (key == "mkn.with.bin") return "0";
+  return std::nullopt;
+}
+
 bool maiken::Properties::EXTENDS(std::string const& key, std::string const& value) {
   return FIND_UNESCAPED(value, "${" + key + "}") != std::string::npos;
 }
@@ -76,11 +84,12 @@ std::string maiken::Properties::EXTEND(std::string const& key, std::string value
                                        mkn::kul::hash::map::S2S const& ps, std::string const& file)
     KTHROW(mkn::kul::Exception) {
   if (!EXTENDS(key, value)) return value;
-  if (!ps.count(key))
+  auto const builtin = ps.count(key) ? std::nullopt : BUILTIN(key);
+  if (!ps.count(key) && !builtin)
     KEXIT(1, "Property : '" + key + "' in " + file +
                  " uses itself, but nothing before it (a super: or settings file) defines it");
   auto const ref = "${" + key + "}";
-  auto const& before = ps.at(key);
+  auto const& before = builtin ? *builtin : ps.at(key);
   for (auto pos = FIND_UNESCAPED(value, ref); pos != std::string::npos;
        pos = FIND_UNESCAPED(value, ref, pos + before.size()))
     value.replace(pos, ref.size(), before);

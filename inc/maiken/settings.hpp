@@ -40,6 +40,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mkn/kul/lang/compiler.hpp"
 #include "yaml-cpp/yaml.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <vector>
@@ -50,6 +52,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace mkn {
@@ -138,6 +141,11 @@ class Settings : public mkn::kul::yaml::File, public Constants {
   std::vector<std::string> rrs, rms;
   std::vector<std::unique_ptr<Settings>>
       sups;  // super: files, in order, those seen before left out
+  static constexpr std::size_t MAX_SUPERS = 5;
+  // every super: file, in order, also those loaded under an earlier file (owned there): what this
+  //  file's properties extend; files above it in the chain (a cycle) left out
+  std::array<Settings*, MAX_SUPERS> supers{};
+  std::size_t n_supers = 0;
   mkn::kul::hash::map::S2S ps;
   Findables findables_;
   mkn::kul::hash::map::S2S binaries_;
@@ -145,7 +153,9 @@ class Settings : public mkn::kul::yaml::File, public Constants {
 
   void resolveProperties() KTHROW(SettingsException);
   void preorder(std::vector<Settings*>& files);  // this file, then each super: file's chain
-  void mergeSuperProperties();
+  // each file once, after its super: files
+  void postorder(std::vector<Settings*>& files, std::unordered_set<Settings const*>& seen);
+  void mergeSuperProperties();  // its super: files' properties it doesn't set, the first's first
   // sets this file's env: entries used, each in turn: one may use the value the one before set
   void applyEnv() const;
   void resolveFindables() KTHROW(SettingsException);

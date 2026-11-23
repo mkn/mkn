@@ -45,12 +45,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mkn/kul/yaml.hpp"
 #include "yaml-cpp/yaml.h"
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <initializer_list>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace maiken {
@@ -64,6 +66,7 @@ class SuperSettings {
 
  private:
   mkn::kul::hash::set::String files;
+  std::unordered_map<std::string, Settings*> loaded;  // super: files constructed, by file
   std::size_t depth = 0;  // settings files being constructed, 0 when none
 
   static SuperSettings& INSTANCE() {
@@ -81,7 +84,10 @@ class SuperSettings {
    public:
     Loading(std::string const& file) : outermost{INSTANCE().depth == 0} {
       auto& ss = INSTANCE();
-      if (ss.depth++ == 0) ss.files.clear();  // a new chain
+      if (ss.depth++ == 0) {  // a new chain
+        ss.files.clear();
+        ss.loaded.clear();
+      }
       ss.first(file);
     }
     bool const outermost;  // the first file of the chain
@@ -141,29 +147,46 @@ maiken::Settings::Settings(std::filesystem::path const& file_) : mkn::kul::yaml:
     if (!d.is() && !d.mk())
       KEXCEPT(SettingsException, file_.string(), " error: local/mod-repo is not a valid directory");
   }
-  if (root()[STR_SUPER])
-    for (auto const& name : super_names(root()[STR_SUPER])) {
+  if (root()[STR_SUPER]) {
+    auto const names = super_names(root()[STR_SUPER]);
+    if (names.size() > MAX_SUPERS)
+      KEXCEPT(SettingsException, file_.string(),
+              " error: more than " + std::to_string(MAX_SUPERS) + " super: files");
+    auto& ss = SuperSettings::INSTANCE();
+    for (auto const& name : names) {
       auto const f = RESOLVE(name, this);
-      if (f.real() == mkn::kul::File(file()).real())
+      auto const real = f.real();
+      if (real == mkn::kul::File(file()).real())
         KEXCEPT(SettingsException, "super cannot reference itself: " + file());
-      if (!SuperSettings::INSTANCE().first(f.real())) continue;
-      sups.emplace_back(std::make_unique<Settings>(
-          mkn::kul::yaml::File::CREATE<Settings>(f.full())));  // -> getOrCreate
+      if (ss.first(real)) {
+        sups.emplace_back(std::make_unique<Settings>(
+            mkn::kul::yaml::File::CREATE<Settings>(f.full())));  // -> getOrCreate
+        ss.loaded[real] = supers[n_supers++] = sups.back().get();
+      } else if (auto const it = ss.loaded.find(real); it != ss.loaded.end())
+        supers[n_supers++] = it->second;  // under an earlier file, searched there, extended here
     }
+  }
 
   if (loading.outermost) {
+    // properties: each file once, after its super: files, its own over theirs; this file's own
+    //  in POST_CONSTRUCT
+    std::vector<Settings*> ordered;
+    std::unordered_set<Settings const*> seen;
+    postorder(ordered, seen);
+    for (auto* f : ordered) {
+      f->mergeSuperProperties();
+      if (f != this) f->resolveProperties();
+    }
+    // env: along the chain, per variable up to the first file replacing it, from the end of the
+    //  chain up; this file's own in POST_CONSTRUCT
     std::vector<Settings*> files;
     preorder(files);
     std::vector<std::vector<YAML::Node>> envs;
     for (auto const* f : files) envs.push_back(ENV_ENTRIES(f->root()[STR_ENV]));
     auto used = ENV_USED(envs);
     for (std::size_t i = 0; i < files.size(); ++i) files[i]->envUsed = std::move(used[i]);
-    // from the end of the chain up, each file after the files it extends: their properties, then
-    //  its env: and properties; this file's own env: and properties follow in POST_CONSTRUCT
-    for (auto it = files.rbegin(); it != files.rend(); ++it) {
-      (*it)->mergeSuperProperties();
-      if (*it != this) POST_CONSTRUCT(*it);
-    }
+    for (auto it = files.rbegin(); it != files.rend(); ++it)
+      if (*it != this) (*it)->applyEnv();
   }
 
   // remote: repos from the first file of the chain setting them, then the built-in ones
@@ -193,9 +216,16 @@ void maiken::Settings::preorder(std::vector<Settings*>& files) {
   for (auto& sup : sups) sup->preorder(files);
 }
 
-void maiken::Settings::mergeSuperProperties() {  // the first super: file's first
-  for (auto const& sup : sups)
-    for (auto const& [a, b] : sup->properties())
+void maiken::Settings::postorder(std::vector<Settings*>& files,
+                                 std::unordered_set<Settings const*>& seen) {
+  if (!seen.insert(this).second) return;
+  for (std::size_t i = 0; i < n_supers; ++i) supers[i]->postorder(files, seen);
+  files.push_back(this);
+}
+
+void maiken::Settings::mergeSuperProperties() {
+  for (std::size_t i = 0; i < n_supers; ++i)
+    for (auto const& [a, b] : supers[i]->properties())
       if (!ps.count(a)) ps.insert(a, b);
 }
 
@@ -263,9 +293,9 @@ void maiken::Settings::applyEnv() const {
 void maiken::Settings::POST_CONSTRUCT(Settings* settings_ptr) {
   auto& settings = settings_ptr != nullptr ? *settings_ptr : Settings::INSTANCE();
 
-  settings.applyEnv();
+  settings.resolveProperties();  // first: env: values may use them
 
-  settings.resolveProperties();
+  settings.applyEnv();
   if (!settings_ptr) settings.resolveFindables();
   if (!settings_ptr) settings.resolveBinaries();
 }

@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 
@@ -61,10 +62,13 @@ class Properties : public Constants {
   // the first f in s from pos not preceded by a backslash, or npos
   static std::size_t FIND_UNESCAPED(std::string const& s, std::string const& f,
                                     std::size_t pos = 0);
+  // the value of a property maiken sets itself (mkn.bin.key, mkn.with.bin), which a settings
+  //  property: using its own name extends when no file before it sets it
+  static std::optional<std::string> BUILTIN(std::string const& key);
   // true if value uses ${key}, so extends the value of key it overrides
   static bool EXTENDS(std::string const& key, std::string const& value);
   // value with each ${key} replaced by the value key has before it, in ps: from an earlier
-  //  file, a super: file or the settings; an error if there is none
+  //  file, a super: file or the settings, else its BUILTIN value; an error if there is none
   static std::string EXTEND(std::string const& key, std::string value,
                             mkn::kul::hash::map::S2S const& ps, std::string const& file)
       KTHROW(mkn::kul::Exception);
