@@ -1,0 +1,4 @@
+# uses its own property, which no file before it defines: an error
+super: settings
+property:
+  self_property: pre.${self_property}

@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "maiken/app.hpp"
+#include "maiken/defs.hpp"
 #include "maiken/global.hpp"
 #include "maiken/project.hpp"
 #include "maiken/property.hpp"
@@ -40,31 +41,59 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "yaml-cpp/yaml.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <tuple>
 #include <unordered_set>
 #include <variant>
 
 maiken::Application& maiken::Application::resolveProperties() KTHROW(maiken::Exception) {
-  ps.setDeletedKey("--DELETED--");
+  auto const& node = project().root()[STR_PROPERTY];
   static std::unordered_set<std::string> warned;  // once per project file and property
-  for (YAML::const_iterator it = project().root()[STR_PROPERTY].begin();
-       it != project().root()[STR_PROPERTY].end(); ++it) {
+  for (auto it = node.begin(); it != node.end(); ++it) {
     auto const k = it->first.as<std::string>();
-    ps[k] = it->second.as<std::string>();
     // a built-in of the same name is used instead, silently but for this; -P is on purpose
     if (AppVars::INSTANCE().properkeys().count(k) && !AppVars::INSTANCE().cliProperkey(k) &&
         warned.insert(project().file() + ":" + k).second)
       KERR << "WARNING: " << project().file() << ": property " << k
            << " is a built-in, its value here is not used";  // stderr: not on -G's stdout
   }
-  for (YAML::const_iterator it = project().root()[STR_PROPERTY].begin();
-       it != project().root()[STR_PROPERTY].end(); ++it) {
-    std::string s = Properties::RESOLVE(*this, it->second.as<std::string>());
-    if (ps.count(it->first.as<std::string>())) ps.erase(it->first.as<std::string>());
-    ps[it->first.as<std::string>()] = s;
-  }
+  Properties::RESOLVE_OWN(node, ps, project().file(),
+                          [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
   return *this;
+}
+
+std::size_t maiken::Properties::FIND_UNESCAPED(std::string const& s, std::string const& f,
+                                               std::size_t pos) {
+  for (pos = s.find(f, pos); pos != std::string::npos; pos = s.find(f, pos + 1))
+    if (pos == 0 || s[pos - 1] != '\\') return pos;
+  return std::string::npos;
+}
+
+std::optional<std::string> maiken::Properties::BUILTIN(std::string const& key) {
+  if (key == "mkn.bin.key") return std::string{defaultBinKey()};
+  if (key == "mkn.with.bin") return "0";
+  return std::nullopt;
+}
+
+bool maiken::Properties::EXTENDS(std::string const& key, std::string const& value) {
+  return FIND_UNESCAPED(value, "${" + key + "}") != std::string::npos;
+}
+
+std::string maiken::Properties::EXTEND(std::string const& key, std::string value,
+                                       mkn::kul::hash::map::S2S const& ps, std::string const& file)
+    KTHROW(mkn::kul::Exception) {
+  if (!EXTENDS(key, value)) return value;
+  auto const builtin = ps.count(key) ? std::nullopt : BUILTIN(key);
+  if (!ps.count(key) && !builtin)
+    KEXIT(1, "Property : '" + key + "' in " + file +
+                 " uses itself, but nothing before it (a super: or settings file) defines it");
+  auto const ref = "${" + key + "}";
+  auto const& before = builtin ? *builtin : ps.at(key);
+  for (auto pos = FIND_UNESCAPED(value, ref); pos != std::string::npos;
+       pos = FIND_UNESCAPED(value, ref, pos + before.size()))
+    value.replace(pos, ref.size(), before);
+  return value;
 }
 
 std::shared_ptr<std::tuple<std::string, int, int>> maiken::Properties::KEY(
