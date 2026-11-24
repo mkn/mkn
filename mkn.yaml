@@ -5,10 +5,10 @@ version: 0.2.1  # on the latest branch a release, e.g. 0.1.0: merged there it is
 property:
   DATE: 24_NOV_2026
   # dependency versions, only here: master on master, latest on the latest branch, releases pinned in tags
-  mkn.kul.version: latest
-  parse.yaml.version: latest
-  mkn.mod.version: latest
-  mkn.ram.version: latest
+  mkn.kul.version: 0.2.0
+  parse.yaml.version: 0.8.1
+  mkn.mod.version: 0.2.0
+  mkn.ram.version: 0.2.0
   self.deps: mkn.kul#${mkn.kul.version}
   clang.format.version: latest
   cpp.iwyu.version: latest
