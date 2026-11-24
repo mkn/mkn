@@ -67,8 +67,8 @@ void Application::link(mkn::kul::hash::set::String const& objects) KTHROW(mkn::k
     if (ts) ts.rm();
     mkn::kul::io::Writer(ts.full()) << mkn::kul::Now::MILLIS();
   }
-  if (CommandStateMachine::INSTANCE().commands().count(STR_TEST) && !tests.empty())
-    buildTest(objects);
+  // a profile's tests are built with it, run with the test command
+  if (!tests.empty()) buildTest(objects);
 
   if (AppVars::INSTANCE().dump()) {
     auto const delEmpty = [](auto dir) {
