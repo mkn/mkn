@@ -4,7 +4,7 @@
 
 | Command     | Description |
 |-------------|-------------|
-| `build`     | Compiles all supported files to the profile binary (`./bin/profile`) directory, and creates library/executable depending |
+| `build`     | Compiles all supported files to the profile binary (`./bin/profile`) directory, and creates library/executable depending, and the profile's `test` executables |
 | `clean`     | deletes all files from the profile directory recursively. |
 | `compile`   | Compiles all supported file to the profile binary directory |
 | `link`      | Creates a library/executable from found compiled files |
@@ -17,7 +17,7 @@
 | `run`       | Starts the application automatically linking libraries for dependencies on dynamic libraries, supports `-a` and `-p`/`-D` |
 | `dbg`       | Same as run but uses debugger - see [debugging](debugging.md) |
 | `tree [$p]` | Prints dependency tree for base profile (or profile `$p`) |
-| `test`      | Builds and runs each file matched by the profile `test` tag, see [mkn.yaml](yaml.md) |
+| `test`      | Runs each binary built from the profile `test` tag (`build` builds them), see [mkn.yaml](yaml.md) |
 | `info`      | Displays the local repository, compile threads and the archiver/compiler/linker found per file type |
 
 ## Arguments
