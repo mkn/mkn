@@ -72,7 +72,7 @@ def behaviour(mkn_bin):
 def prebuilt(mkn_bin, settings, args):
     """test/prebuilt, res/mkn/<settings>.yml: parse.yaml from its 0.8.0 release as a static and a
     shared library and from the release marked Latest for version latest, each clone keeping its
-    binaries in .mkn/prebuilt/@/<mode>; with -P mkn.with.bin=1, MKN_WITH_BIN=1, a settings bin: entry
+    binaries in .mkn/prebuilt/@/<mode>; with -X mkn.with.bin=1, MKN_WITH_BIN=1, a settings bin: entry
     and a settings property: mkn.with.bin"""
     cwd = os.path.join(ROOT, "test", "prebuilt")
     xs = os.path.join(ROOT, "res", "mkn", settings).replace("\\", "/")
@@ -102,7 +102,7 @@ def prebuilt(mkn_bin, settings, args):
             sys.exit(1)
         print(f"PASS prebuilt {name}", flush=True)
 
-    with_bin = ["-P", "mkn.with.bin=1"]
+    with_bin = ["-X", "mkn.with.bin=1"]
     check("static", "static", xs, with_bin, "0.8.0", "static", "0.8.0")
     check("shared", "shared", xs, with_bin + ["-S"], "0.8.0", "shared", "0.8.0")
     check("latest", "latest", xs, with_bin, "latest", "static", "")
