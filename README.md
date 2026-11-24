@@ -122,7 +122,7 @@ profile:
 
 - name: test
   parent: base
-  test: test/(\w*).cpp     # regex; each match is built and run by `mkn test`
+  test: test/(\w*).cpp     # regex; each match is built by `mkn build`, run by `mkn test`
 
 - name: bench
   parent: base
@@ -145,11 +145,11 @@ See the [mkn.yaml manual](doc/mkn/man/yaml.md) for the full schema.
 | Command        | Does                                                        |
 |----------------|-------------------------------------------------------------|
 | `mkn init`     | Create a minimal `mkn.yaml`                                 |
-| `mkn build`    | Compile and link all active projects                        |
+| `mkn build`    | Compile and link all active projects, and the `test:` files |
 | `mkn clean`    | Delete `./bin/<profile>`                                    |
 | `mkn run`      | Run the binary, with dependency library paths set up        |
 | `mkn dbg`      | Run the binary under gdb / lldb / cdb (`MKN_DBG` overrides) |
-| `mkn test`     | Build and run each file listed under the profile's `test:`  |
+| `mkn test`     | Run each binary built from the profile's `test:`            |
 | `mkn profiles` | List the profiles in `./mkn.yaml`                           |
 | `mkn tree`     | Print the dependency tree                                   |
 | `mkn info`     | Show repository, threads and compilers in use               |
