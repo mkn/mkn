@@ -160,7 +160,8 @@ void maiken::Application::process() KTHROW(mkn::kul::Exception) {
     if ((*app)->usePrebuilt()) continue;  // neither built nor cleaned, -d or not
     if ((*app)->ig) continue;
     if ((*app)->lang.empty()) (*app)->resolveLang();
-    (*app)->main_ = {};
+    (*app)->main_ = {};  // a dependency's executables are not built: its main, nor its tests
+    (*app)->tests.clear();
     proc_a(**app, !(*app)->srcs.empty());
   }
   if (!this->ig) proc_a(*this, !this->srcs.empty() || !tests_for(*this).empty() || this->main_);

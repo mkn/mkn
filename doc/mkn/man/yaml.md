@@ -120,7 +120,7 @@ profile:
     sub: project                    # subprojects, follows "with" rules (see dependencies.md) for resolution, requires URL
     main: test.cpp
     test: <file/regex> ${aaa}       # each match is built into its own binary under ./bin/<profile>/test
-                                    # and executed by the "test" command, space or line separated
+                                    # by "build" ("link"), run by the "test" command, space or line separated
     out: ${aaa}                     # override default binary/library name
     install: ${aaa}                 # install binary or library to directory specified
                                     # library naming convention is libname_profile.a/so if linux, name_profile.lib if windows
