@@ -74,6 +74,7 @@ class AppVars : public Constants {
   mkn::kul::hash::set::String cmds, wop;
   mkn::kul::hash::map::S2S evs, jas, pks;
   std::unordered_set<std::string> cpks;  // pks given with -P
+  mkn::kul::hash::map::S2S xps;          // -X: settings files' properties
 
   static std::shared_ptr<AppVars> instance;
 
@@ -148,6 +149,9 @@ class AppVars : public Constants {
   // -P: overrides a project's property of the same name on purpose, without a warning
   void cliProperkey(std::string const& k, std::string const& v) { pks[k] = v, cpks.insert(k); }
   bool cliProperkey(std::string const& k) const { return cpks.count(k) > 0; }
+  // -X: used before a settings file's property of the same name, as -P is for a project's
+  mkn::kul::hash::map::S2S const& settingsProperties() const { return xps; }
+  void settingsProperty(std::string const& k, std::string const& v) { xps[k] = v; }
 
   mkn::kul::hash::map::S2S const& envVars() const { return evs; }
   std::string envVar(std::string const&& k) const { return (*evs.find(k)).second; }

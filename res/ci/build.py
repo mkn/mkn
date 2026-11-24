@@ -275,6 +275,29 @@ def settings_super(mkn_bin, env=None):
         print(f"PASS settings_super {name}", flush=True)
 
 
+SETTINGS_PROPERTY_DIR = os.path.join(ROOT, "test", "settings_property")
+
+
+def settings_property(mkn_bin, env=None):
+    """test/settings_property: env.yml's env: from its properties, built and run: the file's value,
+    then -X replacing the property it is built from"""
+    env = dict(os.environ, **(env or {}))
+    errors = []
+    for args, expected in (([], "MKN_SP=from_file_derived"),
+                           (["-X", "flag=from_x"], "MKN_SP=from_x_derived")):
+        cmd = [mkn_bin, "clean", "build", "run", "-x", "env.yml", *args]
+        print(f"+ [{SETTINGS_PROPERTY_DIR}] {' '.join(cmd)}", flush=True)
+        ran = subprocess.run(cmd, cwd=SETTINGS_PROPERTY_DIR, stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT, text=True, env=env)
+        print(ran.stdout, flush=True)
+        if ran.returncode != 0 or expected not in ran.stdout:
+            errors.append(f"{' '.join(args) or 'no -X'}: expected {expected}, exit {ran.returncode}")
+    if errors:
+        print("settings_property FAILED: " + "; ".join(errors), file=sys.stderr)
+        sys.exit(1)
+
+
+
 def nix_test(std_args, env, full):
     """ubuntu_gcc / ubuntu_clang / manylinux_gcc."""
     a = f'-a "{std_args}"'
@@ -286,6 +309,7 @@ def nix_test(std_args, env, full):
     prebuilt(built("mod"), "bin_nix", "-std=c++20")
     rpath(built("mod"), std_args, env)
     settings_super(built("mod"), env)
+    settings_property(built("mod"), env)
 
     if not full:
         return
@@ -312,6 +336,7 @@ def job_macos_clang():
     prebuilt(built("mod"), "bin_osx", "-std=c++20")
     rpath(built("mod"), "-std=c++20")
     settings_super(built("mod"))
+    settings_property(built("mod"))
 
 
 def job_win_cl():
@@ -325,6 +350,7 @@ def job_win_cl():
     prebuilt(built("mod"), "bin_win", std)
     rpath(built("mod"), std, env)
     settings_super(built("mod"), env)
+    settings_property(built("mod"), env)
 
 
 def job_win_clang():

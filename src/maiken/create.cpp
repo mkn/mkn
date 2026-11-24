@@ -37,6 +37,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "maiken/defs.hpp"
 #include "maiken/global.hpp"
 #include "maiken/project.hpp"
+#include "maiken/property.hpp"
 #include "maiken/settings.hpp"
 #include "maiken/source.hpp"
 #include "mkn/kul/cli.hpp"
@@ -64,6 +65,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace maiken {
 using namespace mkn::kul::cli;
+
+namespace {
+// "k1=v1,k2=v2" (-P, -X, -E), backslash escaping "," and "="
+void each_override(std::string const& s, std::string const& what,
+                   std::function<void(std::string const&, std::string const&)> const& f) {
+  for (auto const& p : mkn::kul::String::ESC_SPLIT(s, ',')) {
+    if (p.find("=") == std::string::npos) KEXIT(1, what + " override invalid, = missing");
+    std::vector<std::string> ps = mkn::kul::String::ESC_SPLIT(p, '=');
+    if (ps.size() > 2) KEXIT(1, what + " override invalid, escape extra \"=\"");
+    f(ps[0], ps[1]);
+  }
+}
+}  // namespace
+
 class CLIHandler : public Constants {
  private:
   std::vector<mkn::kul::cli::Arg> argV{Arg('a', STR_ARG, ArgType::STRING),
@@ -107,7 +122,8 @@ class CLIHandler : public Constants {
                                        Arg('V', STR_VERBOSE, ArgType::MAYBE),
                                        Arg('w', STR_WITH, ArgType::STRING),
                                        Arg('W', STR_WARN, ArgType::MAYBE),
-                                       Arg('x', STR_SETTINGS, ArgType::STRING)};
+                                       Arg('x', STR_SETTINGS, ArgType::STRING),
+                                       Arg('X', STR_SETTINGS_PROPERTY, ArgType::STRING)};
   std::vector<mkn::kul::cli::Cmd> cmdV{
       Cmd(STR_INIT),  Cmd(STR_INC),      Cmd(STR_SRC),
 #if MKN_WITH_MKN_MOD
@@ -298,6 +314,11 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
     KEXIT(0, "");
   }
 
+  // -X before the settings load: their properties, and the env: and paths using them, see it
+  if (args.has(STR_SETTINGS_PROPERTY))
+    each_override(args.get(STR_SETTINGS_PROPERTY), "settings property",
+                  [](auto const& k, auto const& v) { AppVars::INSTANCE().settingsProperty(k, v); });
+
   Settings::writeDefault();
   if (args.has(STR_SETTINGS)) Settings::SET(args.get(STR_SETTINGS));
   Settings::INSTANCE();  // or initialize default
@@ -422,21 +443,15 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
                      std::ref(AppVars::INSTANCE()), std::placeholders::_1));
   }
   {
-    auto splitArgs = [](std::string const& s, std::string const& t,
-                        std::function<void(std::string const&, std::string const&)> const& f) {
-      for (auto const& p : mkn::kul::String::ESC_SPLIT(s, ',')) {
-        if (p.find("=") == std::string::npos) KEXIT(1, t + " override invalid, = missing");
-        std::vector<std::string> ps = mkn::kul::String::ESC_SPLIT(p, '=');
-        if (ps.size() > 2) KEXIT(1, t + " override invalid, escape extra \"=\"");
-        f(ps[0], ps[1]);
-      }
-    };
-
+    // -P: a project's properties; maiken's own settings file properties are -X
     if (args.has(STR_PROPERTY))
-      splitArgs(args.get(STR_PROPERTY), "property",
-                [](auto const& k, auto const& v) { AppVars::INSTANCE().cliProperkey(k, v); });
+      each_override(args.get(STR_PROPERTY), "property", [](auto const& k, auto const& v) {
+        if (Properties::SETTINGS_KEY(k))
+          KEXIT(1, "-P " + k + ": a settings file property, use -X " + k + "=" + v);
+        AppVars::INSTANCE().cliProperkey(k, v);
+      });
     if (args.has(STR_ENV))
-      splitArgs(
+      each_override(
           args.get(STR_ENV), "environment",
           std::bind((void (AppVars::*)(std::string const&, std::string const&))&AppVars::envVar,
                     std::ref(AppVars::INSTANCE()), std::placeholders::_1, std::placeholders::_2));

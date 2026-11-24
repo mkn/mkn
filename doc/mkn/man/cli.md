@@ -47,7 +47,7 @@
 | `-o --out $f`           | Set output binary/lib name to be `$f`, overrides yaml out tag |
 | `-O --optimize [0-9]`   | Add compiler/linker optimisation flags for chosen compiler - 0 = off / 9 = full - number missing = 9 / no default |
 | `-p --profile $p`       | Activate profile p |
-| `-P --property $p`      | CSV key=value properties override format `-P "k1=v1,k2=v2"`, backslash escapes `,` and `=` |
+| `-P --property $p`      | A project's properties override, CSV key=value `-P "k1=v1,k2=v2"`, backslash escapes `,` and `=`. Settings files' properties are `-X` |
 | `-q --quiet`            | Suppress "stale build" notice when compiling without build/compile |
 | `-r --run-args $a`      | Passes `$a` to running binary as arguments, supersedes `-a`. Arguments after `--` are appended |
 | `-R --dry-run`          | Print commands without executing them. |
@@ -62,6 +62,7 @@
 | `-w --with`             | Add profile or dependency on the command line, see [with/out](dependencies.md#without-dependency-build-rules) |
 | `-W --warn`             | Add compiler warning flags for chosen compiler - 0 = off / 9 = full - number missing = 8 / no default |
 | `-x --settings $f`      | Sets settings.yaml in use to `$f`, see [settings.yaml location](settings.md#location) |
+| `-X --settings-property $p` | Settings files' properties override, as `-P`: used before a settings file's `property:` of the same name, also in its `env:`, `inc:`, `path:` and `file:` entries and maiken's `mkn.*` properties, see [settings.yaml](settings.md#a-property-for-one-build) |
 
 ## Examples
 

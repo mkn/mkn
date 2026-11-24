@@ -1,0 +1,17 @@
+# dry runs (test/run.py): ${flag} on the compile line, -X replacing it, -P not
+super: settings
+
+property:
+  flag: from_file
+  derived: ${flag}_derived
+
+env:
+  - name: MKN_SP
+    mode: replace
+    value: ${derived}
+
+file:
+- type: cpp:cxx:cc
+  archiver: ar -cr
+  compiler: g++ -DSP_FLAG=${flag} -DSP_DERIVED=${derived}
+  linker: g++

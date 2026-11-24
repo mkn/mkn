@@ -41,6 +41,21 @@ def prop(args=(), has=(), lacks=()):
     )
 
 
+def sprop(args=(), ok=True, has=(), lacks=(), stdout=None):
+    """test/settings_property: -X over a settings file's property (and those using it), -P not"""
+    case = dict(
+        name=f"settings property {' '.join(args)}".rstrip(),
+        cwd=os.path.join(TEST, "settings_property"),
+        args=["build", "-R", "-x", os.path.join(TEST, "settings_property", "dry.yaml"), *args],
+        ok=ok,
+        has=has,
+        lacks=lacks,
+    )
+    if stdout is not None:
+        case["stdout"] = stdout
+    return case
+
+
 def pub(project, args=(), ok=True, has=(), lacks=(), once=()):
     """test/pub_arg: pub_arg compile arguments of a project and its dependents"""
     return dict(
@@ -58,6 +73,15 @@ def pub(project, args=(), ok=True, has=(), lacks=(), once=()):
 BASE_STATIC = ["BASE_PUB", "BASE_OS", "BASE_STATIC", "BASE_GXX"]
 
 CASES = [
+    # settings files' properties: their own, -X replacing them and those built from them, -P not
+    sprop(has=["-DSP_FLAG=from_file ", "-DSP_DERIVED=from_file_derived "]),
+    sprop(["-X", "flag=from_x"], has=["-DSP_FLAG=from_x ", "-DSP_DERIVED=from_x_derived "],
+          lacks=["from_file"]),
+    sprop(["-P", "flag=from_p"], has=["-DSP_FLAG=from_file "], lacks=["from_p"]),
+    # maiken's own settings properties are -X, -P says so
+    sprop(["-P", "mkn.with.bin=1"], ok=False, has=["use -X mkn.with.bin=1"]),
+    dict(name="settings property -G mkn.with.bin -X", cwd=os.path.join(TEST, "settings_property"),
+         args=["-G", "mkn.with.bin", "-X", "mkn.with.bin=1"], ok=True, has=[], lacks=[], stdout="1"),
     # a directory: a known source type without a compiler is an error, hidden directories unread
     source(
         "dir",

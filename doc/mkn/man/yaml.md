@@ -191,7 +191,8 @@ System properties:
 | `mkn.bin.key`, `mkn.with.bin` | prebuilt binaries, see [settings](settings.md) |
 
 System properties, and any given with `-P name=value`, are used before a project's `property:`
-of the same name. `-P` is how one build overrides a project's value. A project property that a
+of the same name. `-P` is how one build overrides a project's value; a settings file's is `-X`, see
+[settings.yaml](settings.md#a-property-for-one-build). A project property that a
 system property hides is reported once (`WARNING: ... is a built-in, its value here is not used`).
 
 A project's property using its own name, `a: pre.${a}`, extends the value `a` has in its
