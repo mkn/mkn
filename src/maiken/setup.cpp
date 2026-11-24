@@ -253,7 +253,7 @@ void maiken::Application::setup() KTHROW(mkn::kul::Exception) {
       for (auto const& l : mkn::kul::String::LINES(node.Scalar()))
         for (auto const& s : mkn::kul::cli::asArgs(l))
           if (s.size()) {
-            mkn::kul::Dir d(Properties::RESOLVE(*this, s));
+            mkn::kul::Dir d(Properties::RESOLVE(*ptr, s));  // the settings file's own, -X
             if (d)
               incs.push_back(std::make_pair(d.real(), false));
             else
@@ -264,7 +264,7 @@ void maiken::Application::setup() KTHROW(mkn::kul::Exception) {
       for (auto const& l : mkn::kul::String::LINES(node.Scalar()))
         for (auto const& s : mkn::kul::cli::asArgs(l))
           if (s.size()) {
-            mkn::kul::Dir d(Properties::RESOLVE(*this, s));
+            mkn::kul::Dir d(Properties::RESOLVE(*ptr, s));  // the settings file's own, -X
             if (d)
               paths.push_back(d.escr());
             else
@@ -280,7 +280,7 @@ void maiken::Application::setup() KTHROW(mkn::kul::Exception) {
         for (auto const& s : fileStrings)
           for (auto const& t : mkn::kul::String::SPLIT(c[STR_TYPE].Scalar(), ':'))
             if (fs[t].count(s) == 0 && c[s])
-              fs[t].insert(s, Properties::RESOLVE(*this, c[s].Scalar()));
+              fs[t].insert(s, Properties::RESOLVE(*ptr, c[s].Scalar()));
 
   if (fs.empty()) {
     for (auto const* ptr : Settings::INSTANCE().chain())

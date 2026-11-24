@@ -72,6 +72,9 @@ class Properties : public Constants {
   static std::string EXTEND(std::string const& key, std::string value,
                             mkn::kul::hash::map::S2S const& ps, std::string const& file)
       KTHROW(mkn::kul::Exception);
+  // maiken's own settings file properties (mkn.with.bin, mkn.flags.<part>, ...): set with -X, not
+  // -P
+  static bool SETTINGS_KEY(std::string const& key);
   // a property: node's own entries over ps, which holds those it extends
   static void RESOLVE_OWN(YAML::Node const& node, mkn::kul::hash::map::S2S& ps,
                           std::string const& file, auto const& resolve) KTHROW(mkn::kul::Exception);

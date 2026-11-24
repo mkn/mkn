@@ -84,6 +84,7 @@ constexpr char const* maiken::Constants::STR_LINKER;
 constexpr char const* maiken::Constants::STR_PROFILE;
 constexpr char const* maiken::Constants::STR_PROFILES;
 constexpr char const* maiken::Constants::STR_PROPERTY;
+constexpr char const* maiken::Constants::STR_SETTINGS_PROPERTY;
 constexpr char const* maiken::Constants::STR_MOD;
 constexpr char const* maiken::Constants::STR_MODS;
 constexpr char const* maiken::Constants::STR_DEP;
@@ -101,4 +102,4 @@ constexpr char const* maiken::Constants::STR_IF_SRC;
 
 #if defined(MKN_WITH_MKN_RAM) && defined(MKN_WITH_IO_CEREAL)
 constexpr char const* maiken::Constants::STR_NODES;
-#endif  //MKN_WITH_MKN_RAM) && MKN_WITH_IO_CEREAL
+#endif  // MKN_WITH_MKN_RAM) && MKN_WITH_IO_CEREAL

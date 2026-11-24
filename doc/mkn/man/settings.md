@@ -57,7 +57,7 @@ property:
                                        #  reported once, remembered in the clone's .mkn/prebuilt
                                        #  until its commit or mkn.bin.key changes; after 30 days
                                        #  mkn asks to check again (Y/n), -q never asks. The environment
-                                       #  variable MKN_WITH_BIN overrides it, -P mkn.with.bin=1 both
+                                       #  variable MKN_WITH_BIN overrides it, -X mkn.with.bin=1 both
 
     mkn.env.automatic: true           # Optional, default true. Automatically prepend
                                        # dependency library directories onto PATH
@@ -167,3 +167,18 @@ From the first file of the chain to the last, in the depth first order above:
 For example `res/mkn/bin_win.yml` in maiken's repository extends the default settings and sets only
 `compiler: cl -MD` for C and C++, what the prebuilt binaries need; linker, archiver, includes and
 library paths come from the default settings at the end of the chain.
+
+## A property for one build
+
+`-X name=value[,name=value]` is used before a `property:` of the same name in every settings file of
+the chain, and so wherever that property is used: other properties built from it, `env:`, `inc:`,
+`path:` and `file:` entries, and maiken's own properties (`mkn.with.bin`, `mkn.flags.<part>`, ...).
+A name no settings file has is set as well. It is given as `-P` is, `,` and `=` escaped with a
+backslash, e.g. another Windows SDK for one build:
+
+```sh
+mkn build -X sdk.version=10.0.22621.0
+```
+
+`-P` sets a project's properties only: settings files do not see it, and `-P mkn.with.bin=1` is an
+error naming `-X`.

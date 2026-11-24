@@ -1,4 +1,4 @@
-# prebuilt dependencies with -P mkn.with.bin=1, see res/ci/build.py prebuilt() and res/mkn/bin_*.yml:
+# prebuilt dependencies with -X mkn.with.bin=1, see res/ci/build.py prebuilt() and res/mkn/bin_*.yml:
 #  each dependency's own version picks the release, both clones end up with .mkn/prebuilt
 name: prebuilt
 parent: static

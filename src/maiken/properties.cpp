@@ -76,6 +76,15 @@ std::optional<std::string> maiken::Properties::BUILTIN(std::string const& key) {
   return std::nullopt;
 }
 
+bool maiken::Properties::SETTINGS_KEY(std::string const& key) {
+  for (auto const* k : {"mkn.bin.key", "mkn.with.bin", "mkn.link.rpathing",
+                        "mkn.compile.visibility_hidden", "mkn.env.automatic"})
+    if (key == k) return true;
+  for (auto const* prefix : {"mkn.flags.", "mkn.compile.flags.", "mkn.link.flags."})
+    if (key.rfind(prefix, 0) == 0) return true;
+  return false;
+}
+
 bool maiken::Properties::EXTENDS(std::string const& key, std::string const& value) {
   return FIND_UNESCAPED(value, "${" + key + "}") != std::string::npos;
 }
@@ -150,8 +159,11 @@ std::string maiken::Properties::RESOLVE(Settings const& set, std::string const& 
     int const& lb = std::get<1>(*t);
     int const& rb = std::get<2>(*t);
 
-    if (AppVars::INSTANCE().properkeys().count(k))
-      k = AppVars::INSTANCE().properkeys().at(k);
+    auto const& av = AppVars::INSTANCE();
+    if (av.settingsProperties().count(k))  // -X
+      k = av.settingsProperties().at(k);
+    else if (av.properkeys().count(k) && !av.cliProperkey(k))  // built-ins, never -P
+      k = av.properkeys().at(k);
     else if (set.properties().count(k) > 0)
       k = set.properties().at(k);
     else

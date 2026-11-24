@@ -1,0 +1,3 @@
+# settings files' properties: -X over a settings file's property, -P a project's only
+name: settings_property
+main: main.cpp

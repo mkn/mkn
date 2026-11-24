@@ -31,6 +31,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "maiken/compiler/compilers.hpp"
 #include "maiken/env.hpp"
+#include "maiken/global.hpp"
 #include "maiken/settings.hpp"
 #include "maiken/defs.hpp"
 #include "maiken/property.hpp"
@@ -240,6 +241,8 @@ maiken::Settings& maiken::Settings::INSTANCE() KTHROW(mkn::kul::Exit) {
 void maiken::Settings::resolveProperties() KTHROW(SettingsException) {
   Properties::RESOLVE_OWN(root()[STR_PROPERTY], ps, file(),
                           [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
+  // -X over the file's own, for what reads them directly (propertyBool, mkn.with.bin, ...)
+  for (auto const& [k, v] : AppVars::INSTANCE().settingsProperties()) ps[k] = v;
 }
 
 mkn::kul::File maiken::Settings::RESOLVE(std::string const& s, Settings const* settings)

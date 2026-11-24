@@ -175,6 +175,7 @@ class Constants {
   static constexpr auto STR_MASK = "mask";
 
   static constexpr auto STR_PROPERTY = "property";
+  static constexpr auto STR_SETTINGS_PROPERTY = "settings-property";
   static constexpr auto STR_FILE = "file";
   static constexpr auto STR_ARG = "arg";
   static constexpr auto STR_BINC = "binc";
