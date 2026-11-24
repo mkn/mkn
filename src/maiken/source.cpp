@@ -257,7 +257,17 @@ std::vector<std::pair<maiken::Source, std::string>> maiken::all_sources_from(
     }
   }
 
-  if (app.main()) _source(*app.main(), tmpD);
+  if (auto const& entry = app.main()) {
+    auto const& type = entry->in.substr(entry->in.rfind(".") + 1);
+    if (maiken::Compilers::INSTANCE()
+            .get(app.files().at(type).at(Constants::STR_COMPILER))
+            ->sourceIsBin()) {  // e.g. C#: linked as it is, like the other sources of its type
+      mkn::kul::File source(entry->in);
+      objects.insert(source.escm());
+      cacheFiles.push_back(source);
+    } else
+      _source(*entry, tmpD);
+  }
   for (auto const& test : tests_for(app)) handle_source(test, tmpD);
   return source_objects;
 }

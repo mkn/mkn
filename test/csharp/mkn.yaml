@@ -1,0 +1,4 @@
+# a C# executable: csc compiles and links in one, so the sources (the main's too) are its inputs
+name: hello_cs
+main: hello.cs
+src: src
