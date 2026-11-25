@@ -86,6 +86,12 @@ class AppVars : public Constants {
 
  public:
   static void POST_CONSTRUCT();
+  // MKN_REPO, MKN_MOD_REPO: from the settings chain's local: entries, before its properties use
+  // them
+  static void REPOS(Settings const& settings);
+  // mkn.bin.key, mkn.with.bin: from the settings, MKN_WITH_BIN, -X; again once its own properties
+  //  are resolved
+  static void BIN_PROPERTIES(Settings const& settings, bool const resolved);
 
   std::string const& args() const { return aa; }
   void args(std::string const& aa) { this->aa = aa; }

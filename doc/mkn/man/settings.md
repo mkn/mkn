@@ -134,7 +134,8 @@ A settings file can extend others with `super:`, and those can extend others in 
 the file given is the first of such a chain, which usually ends at the default settings file
 (`super: settings`). Without `-x` the chain starts at the default file.
 
-`super:` takes one file or several, at most 5, whitespace separated (`super: a b`) or as a list.
+`super:` takes one file or several, at most 5, whitespace separated (`super: a b`) or as a list,
+one file per item, a space in its path and all.
 The chain is searched depth first: `super: a b` is this file, then `a` and every file `a` extends,
 then `b` and every file `b` extends. A file already in the chain is not searched again where it
 comes up a second time, so `a` and `b` can both extend `settings`, and it is searched once, under
@@ -180,7 +181,8 @@ library paths come from the default settings at the end of the chain.
 `-X name=value[,name=value]` is used before a `property:` of the same name in every settings file of
 the chain, and so wherever that property is used: other properties built from it, `env:`, `inc:`,
 `path:` and `file:` entries, and maiken's own properties (`mkn.with.bin`, `mkn.flags.<part>`, ...).
-A name no settings file has is set as well. It is given as `-P` is, `,` and `=` escaped with a
+The value it replaces is never resolved, so one naming a property nothing defines is no error with
+`-X`. A name no settings file has is set as well. It is given as `-P` is, `,` and `=` escaped with a
 backslash, e.g. another Windows SDK for one build:
 
 ```sh

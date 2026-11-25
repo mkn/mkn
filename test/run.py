@@ -12,10 +12,12 @@ Add a case to CASES, with a project directory under test/ when none fits.
 import os
 import subprocess
 import sys
+import tempfile
 
 TEST = os.path.dirname(os.path.abspath(__file__))
 APPLE = sys.platform == "darwin"
-OS = "nix" if sys.platform.startswith("linux") else "bsd" if APPLE else "win"
+BSD = APPLE or sys.platform.startswith("freebsd")
+OS = "nix" if sys.platform.startswith("linux") else "bsd" if BSD else "win"
 ARCH = os.environ.get("MKN_ARCH", "x86_64")
 
 
@@ -58,6 +60,38 @@ def sprop(args=(), ok=True, has=(), lacks=(), stdout=None):
     return case
 
 
+def sres(args=(), ok=True, has=(), lacks=(), stdout=None, x=("-X", "flag=x"), p=("-P", "pflag=p")):
+    """test/settings_resolve: top.yaml's properties, its super: file's, -X and -P over values never
+    resolved"""
+    case = dict(
+        name=f"settings resolve {' '.join([*args, *x, *p])}".rstrip(),
+        cwd=os.path.join(TEST, "settings_resolve"),
+        args=[*(args or ["build", "-R"]), "-x", "top.yaml", *x, *p],
+        ok=ok,
+        has=has,
+        lacks=lacks,
+    )
+    if stdout is not None:
+        case["stdout"] = stdout
+    return case
+
+
+# the default settings file (a fresh HOME) of a project run with no arguments, its header line
+#  running mkn again: its own properties resolved again from what they extend
+HEADER_SETTINGS = """super:
+  - with space/base
+property:
+  sdk: ${sdk}/v2
+env:
+  - SR_V=x
+file:
+- type: cpp:cxx:cc
+  archiver: ar -cr
+  compiler: g++ -DSDK=${sdk}
+  linker: g++
+"""
+
+
 def pub(project, args=(), ok=True, has=(), lacks=(), once=()):
     """test/pub_arg: pub_arg compile arguments of a project and its dependents"""
     return dict(
@@ -94,6 +128,17 @@ CASES = [
     sprop(["-P", "mkn.with.bin=1"], ok=False, has=["use -X mkn.with.bin=1"]),
     dict(name="settings property -G mkn.with.bin -X", cwd=os.path.join(TEST, "settings_property"),
          args=["-G", "mkn.with.bin", "-X", "mkn.with.bin=1"], ok=True, has=[], lacks=[], stdout="1"),
+    # settings files' properties: a super: list item with a space, ${MKN_REPO} in a super: file the
+    #  chain's local: repo, an env: entry replaced by $NAME_X never resolved
+    sres(has=["-DSDK=/opt/sdk/v2 ", "local_repo", "-DFLAG=x ", "-DPFLAG=p "]),
+    # -X and -P: the value they replace never resolved
+    sres(x=(), ok=False, has=["'not_defined' has not been defined"]),
+    sres(p=(), ok=False, has=["'not_defined' has not been defined"]),
+    # mkn.with.bin resolved, -X of the property it uses; a settings key: the settings file's
+    sres(["-G", "mkn.with.bin"], x=("-X", "flag=x,enabled=1"), stdout="1"),
+    sres(["-G", "mkn.link.rpathing"], stdout="from_settings"),
+    dict(name="settings resolve header line", cwd=os.path.join(TEST, "settings_resolve"), args=[],
+         home=HEADER_SETTINGS, ok=True, has=["-DSDK=/opt/sdk/v2 ", "-DPFLAG=p "], lacks=["v2/v2"]),
     # a directory: a known source type without a compiler is an error, hidden directories unread
     source(
         "dir",
@@ -153,13 +198,22 @@ CASES = [
 def run(mkn, case):
     """has/lacks/once look at stdout and stderr together; "stdout", when given, is all of stdout"""
     separate = "stdout" in case
-    result = subprocess.run(
-        [mkn] + case["args"],
-        cwd=case["cwd"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE if separate else subprocess.STDOUT,
-        text=True,
-    )
+    with tempfile.TemporaryDirectory() as home:
+        env = None
+        if "home" in case:  # a fresh HOME with this default settings file
+            settings = os.path.join(home, ".maiken" if os.name != "nt" else "maiken")
+            os.makedirs(settings)
+            with open(os.path.join(settings, "settings.yaml"), "w") as f:
+                f.write(case["home"])
+            env = dict(os.environ, HOME=home)
+        result = subprocess.run(
+            [mkn] + case["args"],
+            cwd=case["cwd"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE if separate else subprocess.STDOUT,
+            text=True,
+            env=env,
+        )
     out = result.stdout + (result.stderr if separate else "")
     errors = []
     if separate and result.stdout.strip() != case["stdout"]:

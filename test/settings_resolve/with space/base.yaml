@@ -1,0 +1,6 @@
+# a super: list item naming this file, a space in its path
+property:
+  sdk: /opt/sdk
+  repo_sdk: ${MKN_REPO}/sdk  # the chain's local: repo, though resolved before the file using this one
+env:
+  - SR_V=${not_defined}  # replaced in the files using this one, never resolved

@@ -80,8 +80,15 @@ inline bool ENV_EXTENDS(YAML::Node const& entry) {
   if (bits.size() < 2) return false;
   std::string value = bits[1];
   for (std::size_t i = 2; i < bits.size(); ++i) value += "=" + bits[i];
-  for (auto const& ref : {"$" + bits[0], "${" + bits[0] + "}"})
-    if (Properties::FIND_UNESCAPED(value, ref) != std::string::npos) return true;
+  if (Properties::FIND_UNESCAPED(value, "${" + bits[0] + "}") != std::string::npos) return true;
+  auto const ref = "$" + bits[0];  // the whole name: $NAME, not $NAME_X
+  for (auto pos = Properties::FIND_UNESCAPED(value, ref); pos != std::string::npos;
+       pos = Properties::FIND_UNESCAPED(value, ref, pos + 1)) {
+    auto const end = pos + ref.size();
+    if (end == value.size() ||
+        !(std::isalnum(static_cast<unsigned char>(value[end])) || value[end] == '_'))
+      return true;
+  }
   return false;
 }
 

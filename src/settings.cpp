@@ -54,6 +54,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 namespace maiken {
@@ -98,18 +99,17 @@ class SuperSettings {
   };
 };
 
-// super: names, a list or whitespace separated
+// super: names, a list (a file per item, spaces and all) or whitespace separated
 static std::vector<std::string> super_names(YAML::Node const& node) {
   std::vector<std::string> names;
-  auto const add = [&](std::string const& s) {
-    for (auto const& line : mkn::kul::String::LINES(s))
-      for (auto const& name : mkn::kul::cli::asArgs(line))
-        if (!name.empty()) names.push_back(name);
-  };
-  if (node.IsSequence())
-    for (auto const& n : node) add(n.Scalar());
-  else
-    add(node.Scalar());
+  if (node.IsSequence()) {
+    for (auto const& n : node)
+      if (!n.Scalar().empty()) names.push_back(n.Scalar());
+    return names;
+  }
+  for (auto const& line : mkn::kul::String::LINES(node.Scalar()))
+    for (auto const& name : mkn::kul::cli::asArgs(line))
+      if (!name.empty()) names.push_back(name);
   return names;
 }
 }  // namespace maiken
@@ -169,6 +169,7 @@ maiken::Settings::Settings(std::filesystem::path const& file_) : mkn::kul::yaml:
   }
 
   if (loading.outermost) {
+    AppVars::REPOS(*this);  // ${MKN_REPO}: the chain's local:, for the properties using it
     // properties: each file once, after its super: files, its own over theirs; this file's own
     //  in POST_CONSTRUCT
     std::vector<Settings*> ordered;
@@ -242,10 +243,16 @@ void maiken::Settings::resolveProperties() KTHROW(SettingsException) {
   if (auto const node = root()[STR_PROPERTY])
     for (auto it = node.begin(); it != node.end(); ++it)
       Properties::NOT_FIXED(it->first.as<std::string>(), file());
-  Properties::RESOLVE_OWN(root()[STR_PROPERTY], ps, file(),
+  // again (a project file's header line runs mkn again): from what it extends, not its own
+  if (base_ps)
+    ps = *base_ps;
+  else
+    base_ps = ps;
+  auto const& xps = AppVars::INSTANCE().settingsProperties();
+  Properties::RESOLVE_OWN(root()[STR_PROPERTY], ps, xps, file(),
                           [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
   // -X over the file's own, for what reads them directly (propertyBool, mkn.with.bin, ...)
-  for (auto const& [k, v] : AppVars::INSTANCE().settingsProperties()) ps[k] = v;
+  for (auto const& [k, v] : xps) ps[k] = v;
 }
 
 mkn::kul::File maiken::Settings::RESOLVE(std::string const& s, Settings const* settings)
@@ -300,7 +307,23 @@ void maiken::Settings::POST_CONSTRUCT(Settings* settings_ptr) {
   auto& settings = settings_ptr != nullptr ? *settings_ptr : Settings::INSTANCE();
 
   settings.resolveProperties();  // first: env: values may use them
+  AppVars::BIN_PROPERTIES(settings, /*resolved=*/true);
 
+  // again (a project file's header line runs mkn again): over the environment from before, not
+  //  over its own prepends
+  if (settings.envBefore)
+    for (auto const& [name, value] : *settings.envBefore)
+      mkn::kul::env::SET(name.c_str(), value ? value->c_str() : nullptr);
+  else {
+    settings.envBefore.emplace();
+    for (auto const& entry : ENV_ENTRIES(settings.root()[STR_ENV])) {
+      auto const name = ENV_NAME(entry);
+      settings.envBefore->emplace_back(
+          name, mkn::kul::env::EXISTS(name.c_str())
+                    ? std::optional<std::string>{mkn::kul::env::GET(name.c_str())}
+                    : std::nullopt);
+    }
+  }
   settings.applyEnv();
   if (!settings_ptr) settings.resolveFindables();
   if (!settings_ptr) settings.resolveBinaries();

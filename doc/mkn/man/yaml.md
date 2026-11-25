@@ -197,10 +197,12 @@ override, defaulting to them:
 named `MKN_REPO` changes what `${MKN_REPO}` gives, `local: repo:` where dependencies are.
 
 A project sees `-P name=value`, then its own `property:` (with its `super:` project's and the
-settings files'), then the system property. `-P` is how one build overrides a project's value;
-a settings file's is `-X`, see [settings.yaml](settings.md#a-property-for-one-build). A
-project's `mkn.bin.key` or `mkn.with.bin` is reported once and not used (`WARNING: ... is a
-settings file property, its value here is not used`).
+settings files'), then the system property. `-P` is how one build overrides a project's value,
+the value it replaces never resolved; a settings file's is `-X`, see
+[settings.yaml](settings.md#a-property-for-one-build). A project's value for one of maiken's own
+settings properties (`mkn.bin.key`, `mkn.with.bin`, `mkn.flags.<part>`, ...) is reported once and
+not used (`WARNING: ... is a settings file property, its value here is not used`): `${name}` is
+the settings file's, else the built-in.
 
 A project's property using its own name, `a: pre.${a}`, extends the value `a` has in its
 `super:` project, the settings files or the system properties, and is an error if none has one.

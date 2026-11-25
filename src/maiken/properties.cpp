@@ -58,7 +58,7 @@ maiken::Application& maiken::Application::resolveProperties() KTHROW(maiken::Exc
       KERR << "WARNING: " << project().file() << ": property " << k
            << " is a settings file property, its value here is not used";  // not on -G's stdout
   }
-  Properties::RESOLVE_OWN(node, ps, project().file(),
+  Properties::RESOLVE_OWN(node, ps, AppVars::INSTANCE().cliProperkeys(), project().file(),
                           [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
   return *this;
 }
@@ -144,7 +144,11 @@ std::optional<std::string> maiken::Properties::PROJECT_LOOKUP(Application const&
   auto const& av = AppVars::INSTANCE();
   auto const& pks = av.properkeys();
   if (auto const& cps = av.cliProperkeys(); cps.count(k)) return cps.at(k);
-  if (SETTINGS_KEY(k) && pks.count(k)) return pks.at(k);  // a settings file's, never a project's
+  if (SETTINGS_KEY(k)) {  // a settings file's (-X in it), or the built-in, never a project's
+    if (pks.count(k)) return pks.at(k);
+    if (auto const& sps = Settings::INSTANCE().properties(); sps.count(k)) return sps.at(k);
+    return BUILTIN(k);
+  }
   if (app.properties().count(k)) return app.properties().at(k);
   if (pks.count(k)) return pks.at(k);
   return std::nullopt;

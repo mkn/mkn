@@ -1,0 +1,18 @@
+# test/run.py: dry runs with -x top.yaml
+super:
+  - with space/base
+local:
+  repo: bin/local_repo
+property:
+  sdk: ${sdk}/v2
+  flag: ${not_defined}  # -X replaces it, never resolved
+  enabled: 0
+  mkn.with.bin: ${enabled}
+  mkn.link.rpathing: from_settings
+env:
+  - SR_V=$SR_V_SUFFIX  # replaces SR_V, uses SR_V_SUFFIX
+file:
+- type: cpp:cxx:cc
+  archiver: ar -cr
+  compiler: g++ -DSDK=${sdk} -DREPO_SDK=${repo_sdk} -DFLAG=${flag}
+  linker: g++
