@@ -338,6 +338,8 @@ def default_settings(mkn_bin, vcvars=False):
                 with open(settings) as f:
                     text = f.read()
                 print(text, flush=True)
+                # its entries: the commented examples name every compiler
+                text = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
             if (ran.returncode == 0) != ok:
                 errors.append(f"{name}: exit {ran.returncode}")
             if not ok and os.path.exists(settings):
