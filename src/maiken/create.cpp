@@ -506,8 +506,7 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
     if (args.has(STR_TREE)) apps[0]->showTree();
     if (args.has(STR_GET)) {
       // the value ${get} resolves to, as Properties::RESOLVE: -P, the project's, a built-in
-      if (auto const pk = Properties::PROJECT_LOOKUP(*apps[0], args.get(STR_GET)))
-        KOUT(NON) << *pk;
+      if (auto const pk = Properties::PROJECT_LOOKUP(*apps[0], args.get(STR_GET))) KOUT(NON) << *pk;
       KEXIT(0, "");
     }
   }
