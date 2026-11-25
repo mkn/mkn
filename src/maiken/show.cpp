@@ -103,7 +103,7 @@ std::string pad(std::string s, size_t w) {
 void maiken::Application::showConfig(bool force) {
   if (AppVars::INSTANCE().show() || AppVars::INSTANCE().dryRun()) return;
   if (mkn::kul::LogMan::INSTANCE().inf() || force) {
-    std::string repo = (*AppVars::INSTANCE().properkeys().find("MKN_REPO")).second;
+    std::string repo = *AppVars::INSTANCE().projectProperkey("MKN_REPO");
     using namespace mkn::kul::cli;
     KOUT(NON) << "+++++++++ BUILD INFO +++++++++";
     KOUT(NON) << "VERSION : " << VERSION();

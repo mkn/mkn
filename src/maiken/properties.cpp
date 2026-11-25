@@ -135,8 +135,8 @@ std::string maiken::Properties::RESOLVE(Application const& app, std::string cons
     int const& lb = std::get<1>(*t);
     int const& rb = std::get<2>(*t);
 
-    if (AppVars::INSTANCE().properkeys().count(k))
-      k = AppVars::INSTANCE().properkeys().at(k);
+    if (auto const pk = AppVars::INSTANCE().projectProperkey(k))
+      k = *pk;
     else if (app.properties().count(k) == 0) {
       if (app.project().root()[k] && app.project().root()[k].Type() == 2)
         k = app.project().root()[k].Scalar();
@@ -162,7 +162,7 @@ std::string maiken::Properties::RESOLVE(Settings const& set, std::string const& 
     auto const& av = AppVars::INSTANCE();
     if (av.settingsProperties().count(k))  // -X
       k = av.settingsProperties().at(k);
-    else if (av.properkeys().count(k) && !av.cliProperkey(k))  // built-ins, never -P
+    else if (av.properkeys().count(k))  // built-ins, -P is a project's
       k = av.properkeys().at(k);
     else if (set.properties().count(k) > 0)
       k = set.properties().at(k);

@@ -38,6 +38,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstdint>
 #include <unordered_set>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -72,9 +73,9 @@ class AppVars : public Constants {
   uint16_t de = -1, dl = 0, op = -1, ts = 1, wa = -1;
   std::string aa, al, dep, io, la, mo, no_, ra, wi, wo;
   mkn::kul::hash::set::String cmds, wop;
-  mkn::kul::hash::map::S2S evs, jas, pks;
-  std::unordered_set<std::string> cpks;  // pks given with -P
-  mkn::kul::hash::map::S2S xps;          // -X: settings files' properties
+  mkn::kul::hash::map::S2S evs, jas, pks;  // pks: built-ins, as settings files see them
+  mkn::kul::hash::map::S2S cpks;           // -P: a project's properties, never a settings file's
+  mkn::kul::hash::map::S2S xps;            // -X: settings files' properties
 
   static std::shared_ptr<AppVars> instance;
 
@@ -146,9 +147,16 @@ class AppVars : public Constants {
 
   mkn::kul::hash::map::S2S const& properkeys() const { return pks; }
   void properkeys(std::string const& k, std::string const& v) { pks[k] = v; }
-  // -P: overrides a project's property of the same name on purpose, without a warning
-  void cliProperkey(std::string const& k, std::string const& v) { pks[k] = v, cpks.insert(k); }
+  // -P: overrides a project's property or a built-in of the same name on purpose, without a
+  //  warning; for projects only, settings files see the built-in
+  void cliProperkey(std::string const& k, std::string const& v) { cpks[k] = v; }
   bool cliProperkey(std::string const& k) const { return cpks.count(k) > 0; }
+  // what a project sees for k before its own properties: -P, else a built-in
+  std::optional<std::string> projectProperkey(std::string const& k) const {
+    if (auto const it = cpks.find(k); it != cpks.end()) return it->second;
+    if (auto const it = pks.find(k); it != pks.end()) return it->second;
+    return std::nullopt;
+  }
   // -X: used before a settings file's property of the same name, as -P is for a project's
   mkn::kul::hash::map::S2S const& settingsProperties() const { return xps; }
   void settingsProperty(std::string const& k, std::string const& v) { xps[k] = v; }
