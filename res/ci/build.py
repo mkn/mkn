@@ -298,6 +298,78 @@ def settings_property(mkn_bin, env=None):
 
 
 
+def default_settings(mkn_bin, vcvars=False):
+    """the default settings file mkn writes on its first run: from the compilers on PATH and
+    MKN_GCC_PREFERRED / MKN_CL_PREFERRED, or with none an error that names the file and
+    mkn.github.io (expected failures: mkn cannot install a compiler, nor find MSVC without
+    vcvarsall.bat). A fresh HOME, and a PATH of empty stand-ins: mkn only looks for them on it.
+    vcvars: the job has a Developer prompt's environment, cl is found with MKN_CL_PREFERRED"""
+    errors = []
+
+    def case(name, tools, extra=None, ok=True, has=(), lacks=(), dev_env=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            home, stand_ins, proj = (os.path.join(tmp, d) for d in ("home", "bin", "proj"))
+            for d in (home, stand_ins, proj):
+                os.makedirs(d)
+            with open(os.path.join(proj, "mkn.yaml"), "w") as f:
+                f.write("name: default_settings\n")
+            for t in tools:
+                path = os.path.join(stand_ins, t + EXE)
+                open(path, "w").close()
+                os.chmod(path, 0o755)
+            env = {k: v for k, v in os.environ.items()
+                   if k not in ("KLOG", "MKN_GCC_PREFERRED", "MKN_CL_PREFERRED")
+                   and (dev_env or k not in ("INCLUDE", "LIB"))}
+            env.update(extra or {}, HOME=home, KLOG="0")
+            if dev_env:
+                env["PATH"] = stand_ins + os.pathsep + os.environ["PATH"]
+            elif IS_WIN:
+                env["PATH"] = stand_ins + os.pathsep + os.path.join(os.environ["SystemRoot"], "System32")
+            else:
+                env["PATH"] = stand_ins
+            cmd = [mkn_bin, "-G", "MKN_HOME"]
+            print(f"+ [{name}] {' '.join(cmd)}", flush=True)
+            ran = subprocess.run(cmd, cwd=proj, env=env, stdout=subprocess.PIPE,
+                                 stderr=subprocess.STDOUT, text=True)
+            print(ran.stdout, flush=True)
+            settings = os.path.join(home, "maiken" if IS_WIN else ".maiken", "settings.yaml")
+            text = ran.stdout
+            if os.path.exists(settings):
+                with open(settings) as f:
+                    text = f.read()
+                print(text, flush=True)
+            if (ran.returncode == 0) != ok:
+                errors.append(f"{name}: exit {ran.returncode}")
+            if not ok and os.path.exists(settings):
+                errors.append(f"{name}: {settings} left behind")
+            errors.extend(f"{name}: no '{h}'" for h in has if h not in text)
+            errors.extend(f"{name}: '{l}'" for l in lacks if l in text)
+
+    both = ["gcc", "clang"]
+    case("gcc and clang: clang", both, has=["compiler: clang++"])
+    case("gcc and clang, MKN_GCC_PREFERRED: gcc", both, {"MKN_GCC_PREFERRED": "1"},
+         has=["compiler: g++"], lacks=["compiler: clang"])
+    case("gcc", ["gcc"], has=["compiler: g++"])
+    case("clang", ["clang"], has=["compiler: clang++"])
+    if IS_WIN:
+        no_compiler = ["vcvarsall.bat) not detected", "Developer Command Prompt", "settings.yaml",
+                       "https://mkn.github.io/settings.html#windows"]
+        case("none: an error", [], ok=False, has=no_compiler)
+        case("gcc and clang, MKN_CL_PREFERRED, no vcvars: an error", both,
+             {"MKN_CL_PREFERRED": "1"}, ok=False, has=no_compiler)
+        if vcvars:
+            case("gcc and clang, MKN_CL_PREFERRED, vcvars: cl", both, {"MKN_CL_PREFERRED": "1"},
+                 has=["compiler: cl"], lacks=["g++"], dev_env=True)
+    else:
+        os_anchor = "macos" if sys.platform == "darwin" else "linux"
+        case("none: an error", [], ok=False,
+             has=["gcc or clang not found", "settings.yaml",
+                  f"https://mkn.github.io/settings.html#{os_anchor}"])
+    if errors:
+        print("default_settings FAILED: " + "; ".join(errors), file=sys.stderr)
+        sys.exit(1)
+
+
 def nix_test(std_args, env, full):
     """ubuntu_gcc / ubuntu_clang / manylinux_gcc."""
     a = f'-a "{std_args}"'
@@ -310,6 +382,7 @@ def nix_test(std_args, env, full):
     rpath(built("mod"), std_args, env)
     settings_super(built("mod"), env)
     settings_property(built("mod"), env)
+    default_settings(built("mod"))
 
     if not full:
         return
@@ -337,6 +410,7 @@ def job_macos_clang():
     rpath(built("mod"), "-std=c++20")
     settings_super(built("mod"))
     settings_property(built("mod"))
+    default_settings(built("mod"))
 
 
 def job_win_cl():
@@ -351,6 +425,7 @@ def job_win_cl():
     rpath(built("mod"), std, env)
     settings_super(built("mod"), env)
     settings_property(built("mod"), env)
+    default_settings(built("mod"), vcvars=True)
 
 
 def job_win_clang():
@@ -361,6 +436,7 @@ def job_win_clang():
     run(BOOTSTRAP, f"build -dtOp test_mod -x {tc}")
     run(built("mod"), f"build test pack -Op test -x {tc}")
     behaviour(built("mod"))
+    default_settings(built("mod"), vcvars=True)
 
 
 JOBS = {

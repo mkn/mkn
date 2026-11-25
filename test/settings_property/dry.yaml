@@ -1,4 +1,4 @@
-# dry runs (test/run.py): ${flag} on the compile line, -X replacing it, -P not
+# dry runs (test/run.py): ${flag} on the compile line, -X replacing it, -P not; nor -P a built-in
 super: settings
 
 property:
@@ -13,5 +13,5 @@ env:
 file:
 - type: cpp:cxx:cc
   archiver: ar -cr
-  compiler: g++ -DSP_FLAG=${flag} -DSP_DERIVED=${derived}
+  compiler: g++ -DSP_FLAG=${flag} -DSP_DERIVED=${derived} -DSP_OS=${OS}
   linker: g++

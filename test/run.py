@@ -78,6 +78,10 @@ CASES = [
     sprop(["-X", "flag=from_x"], has=["-DSP_FLAG=from_x ", "-DSP_DERIVED=from_x_derived "],
           lacks=["from_file"]),
     sprop(["-P", "flag=from_p"], has=["-DSP_FLAG=from_file "], lacks=["from_p"]),
+    # -P of a built-in: the project's, settings files keep the built-in
+    sprop(["-P", "OS=from_p"], has=["-DSP_OS="], lacks=["from_p"]),
+    dict(name="settings property -G OS -P", cwd=os.path.join(TEST, "settings_property"),
+         args=["-G", "OS", "-P", "OS=from_p"], ok=True, has=[], lacks=[], stdout="from_p"),
     # maiken's own settings properties are -X, -P says so
     sprop(["-P", "mkn.with.bin=1"], ok=False, has=["use -X mkn.with.bin=1"]),
     dict(name="settings property -G mkn.with.bin -X", cwd=os.path.join(TEST, "settings_property"),

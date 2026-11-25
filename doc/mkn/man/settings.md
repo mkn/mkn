@@ -2,6 +2,13 @@
 
 The settings file is the default global configuration for projects.
 
+mkn writes the default one, `settings.yaml` in its home directory (`~/.maiken`, on Windows
+`maiken` in `%HOME%`, else in `%HOMEDRIVE%%HOMEPATH%`), on its first run from the compilers it
+finds: clang, else gcc (`MKN_GCC_PREFERRED` for gcc when both are there), on Windows MSVC
+(`cl`) when neither is there or with `MKN_CL_PREFERRED`, from a Developer Command Prompt's
+environment. Without one it writes nothing and stops, naming the file to write yourself and the
+examples at [mkn.github.io](https://mkn.github.io/settings.html).
+
 ## Schema
 
 ```yaml
@@ -180,5 +187,6 @@ backslash, e.g. another Windows SDK for one build:
 mkn build -X sdk.version=10.0.22621.0
 ```
 
-`-P` sets a project's properties only: settings files do not see it, and `-P mkn.with.bin=1` is an
-error naming `-X`.
+`-P` sets a project's properties only: settings files do not see it, also for a system property
+(`-P HOME=...` leaves a settings file's `${HOME}` as it is), and `-P mkn.with.bin=1` is an error
+naming `-X`.

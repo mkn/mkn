@@ -91,6 +91,21 @@ void maiken::Settings::write(mkn::kul::File const& file) KTHROW(mkn::kul::Exit) 
     w << mkn::kul::os::EOL();
   }
 
+#ifndef _WIN32
+  if (!c && !g) {  // a settings file without file: entries would fail every build after
+    w.flush().close();
+    file.rm();
+#if defined(__APPLE__)
+    constexpr auto os = "macos";
+#else
+    constexpr auto os = "linux";
+#endif
+    KEXIT(1, "gcc or clang not found", mkn::kul::os::EOL(),
+          "\tInstall one, or write the settings file ", file.real(), " yourself, see",
+          mkn::kul::os::EOL(), "\t@ https://mkn.github.io/settings.html#", os);
+  }
+#endif
+
 #ifdef _WIN32
 
   if (use_cl || (!c && !g)) {
@@ -101,10 +116,12 @@ void maiken::Settings::write(mkn::kul::File const& file) KTHROW(mkn::kul::Exit) 
     if (cl.empty() || inc.empty() || lib.empty()) {
       w.flush().close();
       file.rm();
-      KEXIT(1, "gcc or clang not found, vcvars not detected", mkn::kul::os::EOL(),
-            "\tRun vcvarsall.bat (a Developer Command Prompt or PowerShell), or see how to "
-            "configure maiken settings.yaml",
-            mkn::kul::os::EOL(), "\t@ https://mkn.github.io/settings.html#windows");
+      KEXIT(1, "gcc or clang not found, MSVC's environment (vcvarsall.bat) not detected",
+            mkn::kul::os::EOL(),
+            "\tRun mkn from a Developer Command Prompt or Developer PowerShell, or write the "
+            "settings file ",
+            file.real(), " yourself, see", mkn::kul::os::EOL(),
+            "\t@ https://mkn.github.io/settings.html#windows");
     }
 
     w.write("inc: ", true);

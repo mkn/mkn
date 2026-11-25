@@ -503,8 +503,8 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
     if (args.has(STR_GET)) {
       // the value ${get} resolves to: a built-in or -P before the project's, as Properties::RESOLVE
       auto const& get(args.get(STR_GET));
-      if (AppVars::INSTANCE().properkeys().count(get))
-        KOUT(NON) << (*AppVars::INSTANCE().properkeys().find(get)).second;
+      if (auto const pk = AppVars::INSTANCE().projectProperkey(get))
+        KOUT(NON) << *pk;
       else if (apps[0]->properties().count(get))
         KOUT(NON) << (*apps[0]->properties().find(get)).second;
       KEXIT(0, "");
