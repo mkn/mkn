@@ -201,17 +201,20 @@ void Application::buildExecutable(mkn::kul::hash::set::String const& objects_)
   std::string const oType("." + (*AppVars::INSTANCE().envVars().find("MKN_OBJ")).second);
   mkn::kul::Dir objD(buildDir().join("obj")), tmpD(buildDir().join("tmp"));
   auto const name(out.empty() ? project().root()[STR_NAME].Scalar() : out);
-  auto obFile = source_object(mkn::kul::File(main_->in).real());
-  mkn::kul::File tbject(obFile, tmpD);
-  if (!dryRun && !tbject)
-    KERR << "Source expected not found (ignoring) " << tbject;
-  else {
-    objects.emplace(tbject.escm());
+  std::vector<std::filesystem::path> starDirs;
+  if (Compilers::INSTANCE().get(fs[fileType][STR_COMPILER])->sourceIsBin()) {
+    objects = objects_;  // e.g. C#: no objects, the sources (the main's too) are linked
+  } else {
+    auto obFile = source_object(mkn::kul::File(main_->in).real());
+    mkn::kul::File tbject(obFile, tmpD);
+    if (!dryRun && !tbject)
+      KERR << "Source expected not found (ignoring) " << tbject;
+    else {
+      objects.emplace(tbject.escm());
+    }
+    if (objects_.size()) starDirs.emplace_back(objD.path());
   }
   auto install = mkn::kul::Dir(inst ? inst.real() : buildDir());
-
-  std::vector<std::filesystem::path> starDirs;
-  if (objects_.size()) starDirs.emplace_back(objD.path());
 
   Executioner::show_link_settings(*this);
   auto cpc = Executioner::build_exe(objects, starDirs, file, name, install, *this);

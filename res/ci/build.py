@@ -297,6 +297,14 @@ def settings_property(mkn_bin, env=None):
         sys.exit(1)
 
 
+CSHARP_DIR = os.path.join(ROOT, "test", "csharp")
+
+
+def csharp(mkn_bin, env=None):
+    """test/csharp: a C# executable (csc: no objects, its sources linked, the main's too) built
+    and run, its main checking a function from src/"""
+    run(mkn_bin, "clean build run -x csharp.yml", cwd=CSHARP_DIR, env=env)
+
 
 def default_settings(mkn_bin, vcvars=False):
     """the default settings file mkn writes on its first run: from the compilers on PATH and
@@ -428,6 +436,7 @@ def job_win_cl():
     settings_super(built("mod"), env)
     settings_property(built("mod"), env)
     default_settings(built("mod"), vcvars=True)
+    csharp(built("mod"), env)
 
 
 def job_win_clang():
