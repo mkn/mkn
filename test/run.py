@@ -60,7 +60,8 @@ def sprop(args=(), ok=True, has=(), lacks=(), stdout=None):
     return case
 
 
-def sres(args=(), ok=True, has=(), lacks=(), stdout=None, x=("-X", "flag=x"), p=("-P", "pflag=p")):
+def sres(args=(), ok=True, has=(), lacks=(), stdout=None, x=("-X", "flag=x"), p=("-P", "pflag=p"),
+         unset=()):
     """test/settings_resolve: top.yaml's properties, its super: file's, -X and -P over values never
     resolved"""
     case = dict(
@@ -70,6 +71,7 @@ def sres(args=(), ok=True, has=(), lacks=(), stdout=None, x=("-X", "flag=x"), p=
         ok=ok,
         has=has,
         lacks=lacks,
+        unset=unset,  # environment variables over the settings file (MKN_WITH_BIN)
     )
     if stdout is not None:
         case["stdout"] = stdout
@@ -135,7 +137,7 @@ CASES = [
     sres(x=(), ok=False, has=["'not_defined' has not been defined"]),
     sres(p=(), ok=False, has=["'not_defined' has not been defined"]),
     # mkn.with.bin resolved, -X of the property it uses; a settings key: the settings file's
-    sres(["-G", "mkn.with.bin"], x=("-X", "flag=x,enabled=1"), stdout="1"),
+    sres(["-G", "mkn.with.bin"], x=("-X", "flag=x,enabled=1"), stdout="1", unset=["MKN_WITH_BIN"]),
     sres(["-G", "mkn.link.rpathing"], stdout="from_settings"),
     dict(name="settings resolve header line", cwd=os.path.join(TEST, "settings_resolve"), args=[],
          home=HEADER_SETTINGS, ok=True, has=["-DSDK=/opt/sdk/v2 ", "-DPFLAG=p "], lacks=["v2/v2"]),
@@ -200,12 +202,14 @@ def run(mkn, case):
     separate = "stdout" in case
     with tempfile.TemporaryDirectory() as home:
         env = None
+        if case.get("unset"):
+            env = {k: v for k, v in os.environ.items() if k not in case["unset"]}
         if "home" in case:  # a fresh HOME with this default settings file
             settings = os.path.join(home, ".maiken" if os.name != "nt" else "maiken")
             os.makedirs(settings)
             with open(os.path.join(settings, "settings.yaml"), "w") as f:
                 f.write(case["home"])
-            env = dict(os.environ, HOME=home)
+            env = dict(env or os.environ, HOME=home)
         result = subprocess.run(
             [mkn] + case["args"],
             cwd=case["cwd"],
