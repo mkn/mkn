@@ -317,7 +317,10 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
   // -X before the settings load: their properties, and the env: and paths using them, see it
   if (args.has(STR_SETTINGS_PROPERTY))
     each_override(args.get(STR_SETTINGS_PROPERTY), "settings property",
-                  [](auto const& k, auto const& v) { AppVars::INSTANCE().settingsProperty(k, v); });
+                  [](auto const& k, auto const& v) {
+                    Properties::NOT_FIXED(k, "-X");
+                    AppVars::INSTANCE().settingsProperty(k, v);
+                  });
 
   Settings::writeDefault();
   if (args.has(STR_SETTINGS)) Settings::SET(args.get(STR_SETTINGS));
@@ -448,6 +451,7 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
       each_override(args.get(STR_PROPERTY), "property", [](auto const& k, auto const& v) {
         if (Properties::SETTINGS_KEY(k))
           KEXIT(1, "-P " + k + ": a settings file property, use -X " + k + "=" + v);
+        Properties::NOT_FIXED(k, "-P");
         AppVars::INSTANCE().cliProperkey(k, v);
       });
     if (args.has(STR_ENV))
@@ -501,12 +505,9 @@ std::vector<maiken::Application*> maiken::Application::CREATE(mkn::kul::cli::Arg
     if (args.has(STR_INFO)) apps[0]->showConfig(1);
     if (args.has(STR_TREE)) apps[0]->showTree();
     if (args.has(STR_GET)) {
-      // the value ${get} resolves to: a built-in or -P before the project's, as Properties::RESOLVE
-      auto const& get(args.get(STR_GET));
-      if (auto const pk = AppVars::INSTANCE().projectProperkey(get))
+      // the value ${get} resolves to, as Properties::RESOLVE: -P, the project's, a built-in
+      if (auto const pk = Properties::PROJECT_LOOKUP(*apps[0], args.get(STR_GET)))
         KOUT(NON) << *pk;
-      else if (apps[0]->properties().count(get))
-        KOUT(NON) << (*apps[0]->properties().find(get)).second;
       KEXIT(0, "");
     }
   }

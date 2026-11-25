@@ -62,9 +62,18 @@ class Properties : public Constants {
   // the first f in s from pos not preceded by a backslash, or npos
   static std::size_t FIND_UNESCAPED(std::string const& s, std::string const& f,
                                     std::size_t pos = 0);
-  // the value of a property maiken sets itself (mkn.bin.key, mkn.with.bin), which a settings
-  //  property: using its own name extends when no file before it sets it
+  // the value of a property maiken sets itself (mkn.bin.key, mkn.with.bin, HOME, OS, ...), which
+  //  a property: using its own name extends when nothing before it sets it
   static std::optional<std::string> BUILTIN(std::string const& key);
+  // mkn.sys.* and mkn.user.*: built-ins nothing sets, HOME, OS, ARCH, MKN_HOME, MKN_REPO and
+  //  MKN_MOD_REPO default to them and can be set
+  static bool FIXED(std::string const& key);
+  // an error naming where if key is FIXED
+  static void NOT_FIXED(std::string const& key, std::string const& where)
+      KTHROW(mkn::kul::Exception);
+  // what ${k} is in a project: -P, the project's own (its super:'s and the settings' with them),
+  //  then a built-in; maiken's settings keys as the settings set them
+  static std::optional<std::string> PROJECT_LOOKUP(Application const& app, std::string const& k);
   // true if value uses ${key}, so extends the value of key it overrides
   static bool EXTENDS(std::string const& key, std::string const& value);
   // value with each ${key} replaced by the value key has before it, in ps: from an earlier

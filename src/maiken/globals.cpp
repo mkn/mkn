@@ -46,10 +46,15 @@ std::shared_ptr<AppVars> AppVars::instance;
 }
 
 maiken::AppVars::AppVars() {
-  pks["OS"] = MKN_KUL_STR(MKN_KUL_OS);
-  pks["HOME"] = mkn::kul::user::home().string();
-  pks["ARCH"] = mkn::kul::env::GET("MKN_ARCH", "x86_64");
-  pks["MKN_HOME"] = mkn::kul::user::home(STR_MAIKEN).string();
+  // fixed built-ins (Properties::FIXED), and the names a project or settings file can override,
+  //  defaulting to them
+  pks["mkn.sys.os"] = pks["OS"] = MKN_KUL_STR(MKN_KUL_OS);
+  pks["mkn.sys.arch"] = pks["ARCH"] = mkn::kul::env::GET("MKN_ARCH", "x86_64");
+  pks["mkn.user.home"] = pks["HOME"] = mkn::kul::user::home().string();
+  pks["mkn.user.maiken"] = pks["MKN_HOME"] = mkn::kul::user::home(STR_MAIKEN).string();
+  pks["mkn.user.repo"] = pks["MKN_REPO"] = (mkn::kul::user::home(STR_MAIKEN) / STR_REPO).string();
+  pks["mkn.user.mod_repo"] = pks["MKN_MOD_REPO"] =
+      (mkn::kul::user::home(STR_MAIKEN) / STR_MOD_REPO).string();
 
   pks["DATETIME"] = mkn::kul::DateTime::NOW();
   pks["TIMESTAMP"] = std::time(NULL);
@@ -77,15 +82,10 @@ void maiken::AppVars::POST_CONSTRUCT() {
   auto& pks = AppVars::INSTANCE().pks;
 
   auto const& settings = Settings::INSTANCE();
-  if (auto const& local_repo = settings.local_dep_repo())
-    pks["MKN_REPO"] = *local_repo;
-  else
-    pks["MKN_REPO"] = (mkn::kul::user::home(STR_MAIKEN) / STR_REPO).string();
-
-  if (auto const& local_repo = settings.local_mod_repo())
-    pks["MKN_MOD_REPO"] = *local_repo;
-  else
-    pks["MKN_MOD_REPO"] = (mkn::kul::user::home(STR_MAIKEN) / STR_MOD_REPO).string();
+  // where dependencies and modules are: the first local: entry of the settings chain, else the
+  //  fixed default; a property of the same name changes only what ${MKN_REPO} gives
+  pks["MKN_REPO"] = settings.local_dep_repo().value_or(pks.at("mkn.user.repo"));
+  pks["MKN_MOD_REPO"] = settings.local_mod_repo().value_or(pks.at("mkn.user.mod_repo"));
 
   // prebuilt binaries are matched against mkn.bin.key and used for every dependency with
   //  mkn.with.bin, see prebuilt.cpp; settings' property: can set them, MKN_WITH_BIN overrides

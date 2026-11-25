@@ -176,27 +176,34 @@ Each value under "g++:" is considered to be a filesystem binary which supports a
 
 ## Properties
 
-System properties:
+System properties: maiken's own `mkn.sys.*` and `mkn.user.*`, which nothing can set (a
+`property:`, `-P` or `-X` naming one is an error), and those a project or settings file can
+override, defaulting to them:
 
-| Property    | Value |
-|-------------|-------|
-| `OS`        | system OS, can be either bsd/nix/win |
-| `ARCH`      | system architecture, eg, x86_64 or arm64 |
-| `HOME`      | bsd/nix/win(with msys/cygwin/etc) = `~/`<br>win cmd prompt = `%HOMEDRIVE%/%HOMEPATH%` |
-| `DATETIME`  | DateTime when app launched format `%Y-%m-%d-%H:%M:%S` |
-| `TIMESTAMP` | Unix timestamp when app launched in seconds |
-| `MKN_ROOT`  | Directory of current mkn.yaml file |
-| `MKN_REPO`  | if settings.yaml has `[local][repo]`, it is that, otherwise<br>bsd/nix/win(with msys/cygwin/etc) = `~/.maiken/repo`<br>win cmd prompt = `%HOMEDRIVE%/%HOMEPATH%/maiken/repo` |
-| `MKN_MOD_REPO`, `MKN_HOME` | module repository and maiken's home directory |
-| `mkn.bin.key`, `mkn.with.bin` | prebuilt binaries, see [settings](settings.md) |
+| Property    | Default | Value |
+|-------------|---------|-------|
+| `OS`        | `mkn.sys.os` | system OS, can be either bsd/nix/win |
+| `ARCH`      | `mkn.sys.arch` | system architecture, `MKN_ARCH` from the environment, else x86_64 |
+| `HOME`      | `mkn.user.home` | `HOME` from the environment, else on Windows `%HOMEDRIVE%%HOMEPATH%` |
+| `MKN_HOME`  | `mkn.user.maiken` | maiken's home directory: `HOME/.maiken`, on Windows `HOME/maiken` |
+| `MKN_REPO`  | `mkn.user.repo` | the dependency repository: the first `local: repo:` of the settings files, else `MKN_HOME/repo` |
+| `MKN_MOD_REPO` | `mkn.user.mod_repo` | the module repository: the first `local: mod-repo:`, else `MKN_HOME/mod-repo` |
+| `DATETIME`  | | DateTime when app launched format `%Y-%m-%d-%H:%M:%S` |
+| `TIMESTAMP` | | Unix timestamp when app launched in seconds |
+| `MKN_ROOT`  | | Directory of current mkn.yaml file |
+| `mkn.bin.key`, `mkn.with.bin` | | prebuilt binaries, settings files' only, see [settings](settings.md) |
 
-System properties, and any given with `-P name=value`, are used before a project's `property:`
-of the same name. `-P` is how one build overrides a project's value; a settings file's is `-X`, see
-[settings.yaml](settings.md#a-property-for-one-build). A project property that a
-system property hides is reported once (`WARNING: ... is a built-in, its value here is not used`).
+`mkn.user.repo` and `mkn.user.mod_repo` are the defaults, not where `local:` points: a property
+named `MKN_REPO` changes what `${MKN_REPO}` gives, `local: repo:` where dependencies are.
+
+A project sees `-P name=value`, then its own `property:` (with its `super:` project's and the
+settings files'), then the system property. `-P` is how one build overrides a project's value;
+a settings file's is `-X`, see [settings.yaml](settings.md#a-property-for-one-build). A
+project's `mkn.bin.key` or `mkn.with.bin` is reported once and not used (`WARNING: ... is a
+settings file property, its value here is not used`).
 
 A project's property using its own name, `a: pre.${a}`, extends the value `a` has in its
-`super:` project or the settings files, and is an error if neither has one.
+`super:` project, the settings files or the system properties, and is an error if none has one.
 
 System properties never end in `.version`: a project names its dependencies' versions
 `<dependency>.version` (e.g. `parse.yaml.version: 0.8.0`, used as `parse.yaml#${parse.yaml.version}`)

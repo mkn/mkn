@@ -1,0 +1,5 @@
+# mkn.sys.* and mkn.user.* cannot be set, see test/run.py
+name: property_fixed
+property:
+  mkn.user.home: mine
+main: main.cpp

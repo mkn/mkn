@@ -239,6 +239,9 @@ maiken::Settings& maiken::Settings::INSTANCE() KTHROW(mkn::kul::Exit) {
 }
 
 void maiken::Settings::resolveProperties() KTHROW(SettingsException) {
+  if (auto const node = root()[STR_PROPERTY])
+    for (auto it = node.begin(); it != node.end(); ++it)
+      Properties::NOT_FIXED(it->first.as<std::string>(), file());
   Properties::RESOLVE_OWN(root()[STR_PROPERTY], ps, file(),
                           [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
   // -X over the file's own, for what reads them directly (propertyBool, mkn.with.bin, ...)
