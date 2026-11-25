@@ -162,7 +162,7 @@ From the first file of the chain to the last, in the depth first order above:
 | Entry | Across the chain |
 |---|---|
 | `file:` | per file type and key (`compiler`, `linker`, `archiver`) the first file setting it wins, so a file can set just one key for a type and take the rest from the files it extends |
-| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next, per file: each file extends every file in its `super:`, also one searched under an earlier file. A property using its own name, `a: pre.${a}`, extends the value it has in the files it extends, an error if none of them has one, except `mkn.bin.key` and `mkn.with.bin`, which then extend their built-in values |
+| `property:` | a file's own properties win over those of the files it extends, and those of its first `super:` file over the next, per file: each file extends every file in its `super:`, also one searched under an earlier file. A property using its own name, `a: pre.${a}`, extends the value it has in the files it extends, else the [system property](yaml.md#properties) of that name (`ARCH: ${ARCH}_x`, `mkn.bin.key`), an error if there is none. `mkn.sys.*` and `mkn.user.*` cannot be set. `${name}` in a settings file is `-X`, then the file's own (with its `super:` files'), then the system property |
 | `local:` `repo` / `mod-repo` | the first file that sets it |
 | `remote:` `repo` / `mod-repo` | the first file that sets it, then the built-in defaults (`MKN_REMOTE_REPO` / `MKN_REMOTE_MOD`) |
 | `inc:`, `path:` | every file's, the first file's first |

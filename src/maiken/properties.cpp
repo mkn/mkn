@@ -52,11 +52,11 @@ maiken::Application& maiken::Application::resolveProperties() KTHROW(maiken::Exc
   static std::unordered_set<std::string> warned;  // once per project file and property
   for (auto it = node.begin(); it != node.end(); ++it) {
     auto const k = it->first.as<std::string>();
-    // a built-in of the same name is used instead, silently but for this; -P is on purpose
-    if (AppVars::INSTANCE().properkeys().count(k) && !AppVars::INSTANCE().cliProperkey(k) &&
-        warned.insert(project().file() + ":" + k).second)
+    Properties::NOT_FIXED(k, project().file());
+    // maiken's own settings file properties are a settings file's, -P says so, this warns
+    if (Properties::SETTINGS_KEY(k) && warned.insert(project().file() + ":" + k).second)
       KERR << "WARNING: " << project().file() << ": property " << k
-           << " is a built-in, its value here is not used";  // stderr: not on -G's stdout
+           << " is a settings file property, its value here is not used";  // not on -G's stdout
   }
   Properties::RESOLVE_OWN(node, ps, project().file(),
                           [&](std::string const& s) { return Properties::RESOLVE(*this, s); });
@@ -73,7 +73,20 @@ std::size_t maiken::Properties::FIND_UNESCAPED(std::string const& s, std::string
 std::optional<std::string> maiken::Properties::BUILTIN(std::string const& key) {
   if (key == "mkn.bin.key") return std::string{defaultBinKey()};
   if (key == "mkn.with.bin") return "0";
+  if (auto const& pks = AppVars::INSTANCE().properkeys(); !SETTINGS_KEY(key) && pks.count(key))
+    return pks.at(key);
   return std::nullopt;
+}
+
+bool maiken::Properties::FIXED(std::string const& key) {
+  return key.rfind("mkn.sys.", 0) == 0 || key.rfind("mkn.user.", 0) == 0;
+}
+
+void maiken::Properties::NOT_FIXED(std::string const& key, std::string const& where)
+    KTHROW(mkn::kul::Exception) {
+  if (FIXED(key))
+    KEXIT(1, "Property : '" + key + "' in " + where +
+                 ": mkn.sys.* and mkn.user.* are maiken's, they cannot be set");
 }
 
 bool maiken::Properties::SETTINGS_KEY(std::string const& key) {
@@ -126,6 +139,17 @@ std::shared_ptr<std::tuple<std::string, int, int>> maiken::Properties::KEY(
   return 0;
 }
 
+std::optional<std::string> maiken::Properties::PROJECT_LOOKUP(Application const& app,
+                                                              std::string const& k) {
+  auto const& av = AppVars::INSTANCE();
+  auto const& pks = av.properkeys();
+  if (auto const& cps = av.cliProperkeys(); cps.count(k)) return cps.at(k);
+  if (SETTINGS_KEY(k) && pks.count(k)) return pks.at(k);  // a settings file's, never a project's
+  if (app.properties().count(k)) return app.properties().at(k);
+  if (pks.count(k)) return pks.at(k);
+  return std::nullopt;
+}
+
 std::string maiken::Properties::RESOLVE(Application const& app, std::string const& s)
     KTHROW(mkn::kul::Exception) {
   std::string r = s;
@@ -135,15 +159,12 @@ std::string maiken::Properties::RESOLVE(Application const& app, std::string cons
     int const& lb = std::get<1>(*t);
     int const& rb = std::get<2>(*t);
 
-    if (auto const pk = AppVars::INSTANCE().projectProperkey(k))
+    if (auto const pk = PROJECT_LOOKUP(app, k))
       k = *pk;
-    else if (app.properties().count(k) == 0) {
-      if (app.project().root()[k] && app.project().root()[k].Type() == 2)
-        k = app.project().root()[k].Scalar();
-      else
-        KEXIT(1, "Property : '" + k + "' has not been defined");
-    } else
-      k = app.properties().at(k);
+    else if (app.project().root()[k] && app.project().root()[k].Type() == 2)
+      k = app.project().root()[k].Scalar();
+    else
+      KEXIT(1, "Property : '" + k + "' has not been defined");
     r = Properties::RESOLVE(app, r.substr(0, lb) + k + r.substr(rb + 1));
   }
   mkn::kul::String::TRIM(r);
@@ -159,13 +180,17 @@ std::string maiken::Properties::RESOLVE(Settings const& set, std::string const& 
     int const& lb = std::get<1>(*t);
     int const& rb = std::get<2>(*t);
 
+    // -X, the file's own (with its super: files'), then a built-in; -P is a project's
     auto const& av = AppVars::INSTANCE();
-    if (av.settingsProperties().count(k))  // -X
+    auto const& pks = av.properkeys();
+    if (av.settingsProperties().count(k))
       k = av.settingsProperties().at(k);
-    else if (av.properkeys().count(k))  // built-ins, -P is a project's
-      k = av.properkeys().at(k);
+    else if (SETTINGS_KEY(k) && pks.count(k))  // as set from the settings, the environment, -X
+      k = pks.at(k);
     else if (set.properties().count(k) > 0)
       k = set.properties().at(k);
+    else if (pks.count(k))
+      k = pks.at(k);
     else
       KEXIT(1, "Property : '" + k + "' has not been defined");
     r = Properties::RESOLVE(set, r.substr(0, lb) + k + r.substr(rb + 1));

@@ -15,6 +15,8 @@ import sys
 
 TEST = os.path.dirname(os.path.abspath(__file__))
 APPLE = sys.platform == "darwin"
+OS = "nix" if sys.platform.startswith("linux") else "bsd" if APPLE else "win"
+ARCH = os.environ.get("MKN_ARCH", "x86_64")
 
 
 def source(profile, settings, ok, has=(), lacks=()):
@@ -30,7 +32,7 @@ def source(profile, settings, ok, has=(), lacks=()):
 
 
 def prop(args=(), has=(), lacks=()):
-    """test/property: a project property hidden by a built-in is reported, unless -P set it"""
+    """test/property: a project property over a built-in of the same name, -P over both"""
     return dict(
         name=f"property {' '.join(args)}".rstrip(),
         cwd=os.path.join(TEST, "property"),
@@ -80,6 +82,12 @@ CASES = [
     sprop(["-P", "flag=from_p"], has=["-DSP_FLAG=from_file "], lacks=["from_p"]),
     # -P of a built-in: the project's, settings files keep the built-in
     sprop(["-P", "OS=from_p"], has=["-DSP_OS="], lacks=["from_p"]),
+    sprop(has=[f"-DSP_ARCH={ARCH}_sp "]),
+    # mkn.sys.* and mkn.user.* cannot be set: not in a settings file, nor with -X or -P
+    dict(name="settings property fixed", cwd=os.path.join(TEST, "settings_property"),
+         args=["build", "-R", "-x", os.path.join(TEST, "settings_property", "fixed.yaml")],
+         ok=False, has=["'mkn.sys.os' in", "cannot be set"], lacks=[]),
+    sprop(["-X", "mkn.user.home=x"], ok=False, has=["'mkn.user.home' in -X", "cannot be set"]),
     dict(name="settings property -G OS -P", cwd=os.path.join(TEST, "settings_property"),
          args=["-G", "OS", "-P", "OS=from_p"], ok=True, has=[], lacks=[], stdout="from_p"),
     # maiken's own settings properties are -X, -P says so
@@ -122,13 +130,18 @@ CASES = [
     pub("app", ["-p", "lib", "-K"], has=["LIB_STATIC"], lacks=["LIB_SHARED"]),
     # keys are checked as if_arg's
     pub("bad", ok=False, has=["malformed pub_arg key"]),
-    # a built-in hides a project property of the same name: reported, -P is on purpose
-    prop(has=["property OS is a built-in"], lacks=["lib.version"]),
-    prop(["-P", "OS=cli"], lacks=["is a built-in"]),
-    # -G prints the value alone on stdout, the warning goes to stderr
+    # a project property over a built-in of the same name, -P over both, mkn.sys.os fixed
+    prop(has=["-DPROP_OS=mine ", f"-DSYS_OS={OS} "], lacks=["WARNING"]),
+    prop(["-P", "OS=cli"], has=["-DPROP_OS=cli ", f"-DSYS_OS={OS} "]),
+    # -G prints the value alone on stdout
     dict(name="property -G OS", cwd=os.path.join(TEST, "property"), args=["-G", "OS"], ok=True,
-         has=["property OS is a built-in"], lacks=[], stdout="nix" if sys.platform.startswith("linux")
-         else "bsd" if APPLE else "win"),
+         has=[], lacks=[], stdout="mine"),
+    dict(name="property -G mkn.sys.os", cwd=os.path.join(TEST, "property"),
+         args=["-G", "mkn.sys.os"], ok=True, has=[], lacks=[], stdout=OS),
+    dict(name="property -P mkn.sys.os", cwd=os.path.join(TEST, "property"),
+         args=["build", "-R", "-P", "mkn.sys.os=x"], ok=False, has=["cannot be set"], lacks=[]),
+    dict(name="property fixed", cwd=os.path.join(TEST, "property_fixed"), args=["build", "-R"],
+         ok=False, has=["'mkn.user.home' in", "cannot be set"], lacks=[]),
     dict(name="property -G unknown", cwd=os.path.join(TEST, "property"), args=["-G", "mkn.nope"],
          ok=True, has=[], lacks=[], stdout=""),
     # "@" is the top level (-p @, dep[@], prebuilt keys' profile=@), never a profile's name

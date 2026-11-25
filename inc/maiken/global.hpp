@@ -38,7 +38,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cstdint>
 #include <unordered_set>
 #include <memory>
-#include <optional>
 #include <string>
 #include <utility>
 
@@ -147,16 +146,10 @@ class AppVars : public Constants {
 
   mkn::kul::hash::map::S2S const& properkeys() const { return pks; }
   void properkeys(std::string const& k, std::string const& v) { pks[k] = v; }
-  // -P: overrides a project's property or a built-in of the same name on purpose, without a
-  //  warning; for projects only, settings files see the built-in
+  // -P: over a project's property or a built-in of the same name; for projects only, settings
+  //  files never see it
+  mkn::kul::hash::map::S2S const& cliProperkeys() const { return cpks; }
   void cliProperkey(std::string const& k, std::string const& v) { cpks[k] = v; }
-  bool cliProperkey(std::string const& k) const { return cpks.count(k) > 0; }
-  // what a project sees for k before its own properties: -P, else a built-in
-  std::optional<std::string> projectProperkey(std::string const& k) const {
-    if (auto const it = cpks.find(k); it != cpks.end()) return it->second;
-    if (auto const it = pks.find(k); it != pks.end()) return it->second;
-    return std::nullopt;
-  }
   // -X: used before a settings file's property of the same name, as -P is for a project's
   mkn::kul::hash::map::S2S const& settingsProperties() const { return xps; }
   void settingsProperty(std::string const& k, std::string const& v) { xps[k] = v; }

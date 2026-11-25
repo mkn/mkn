@@ -135,7 +135,7 @@ mkn::kul::Dir maiken::Application::resolveDepOrModDirectory(YAML::Node const& n,
     d = Properties::RESOLVE(*this, n[STR_LOCAL].Scalar());
   else {
     std::string const depName(Properties::RESOLVE(*this, n[STR_NAME].Scalar()));
-    d = *AppVars::INSTANCE().projectProperkey(module ? "MKN_MOD_REPO" : "MKN_REPO");
+    d = AppVars::INSTANCE().properkeys().at(module ? "MKN_MOD_REPO" : "MKN_REPO");
     try {
       auto resolveSCMBranch = [&]() -> std::string {
         if (n[STR_VERSION]) return Properties::RESOLVE(*this, n[STR_VERSION].Scalar());

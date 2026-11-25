@@ -1,9 +1,10 @@
-# dry runs (test/run.py): ${flag} on the compile line, -X replacing it, -P not; nor -P a built-in
+# dry runs (test/run.py): ${flag} on the compile line, -X replacing it, -P not; nor -P a built-in; ARCH extended
 super: settings
 
 property:
   flag: from_file
   derived: ${flag}_derived
+  ARCH: ${ARCH}_sp  # a built-in's name: extends it
 
 env:
   - name: MKN_SP
@@ -13,5 +14,5 @@ env:
 file:
 - type: cpp:cxx:cc
   archiver: ar -cr
-  compiler: g++ -DSP_FLAG=${flag} -DSP_DERIVED=${derived} -DSP_OS=${OS}
+  compiler: g++ -DSP_FLAG=${flag} -DSP_DERIVED=${derived} -DSP_OS=${OS} -DSP_ARCH=${ARCH}
   linker: g++

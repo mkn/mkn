@@ -1,0 +1,5 @@
+# mkn.sys.* and mkn.user.* cannot be set, see test/run.py
+super: settings
+
+property:
+  mkn.sys.os: mine
