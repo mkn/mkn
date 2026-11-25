@@ -40,6 +40,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mkn/kul/map.hpp"
 #include "mkn/kul/os.hpp"
 
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -69,5 +70,11 @@ void maiken::Application::findObjects(mkn::kul::hash::set::String& objects) cons
     } catch (CompilerNotFoundException const& e) {
       KEXIT(1, "No compiler found for filetype " + ft.first);
     }
+  }
+  if (main_) {  // e.g. C#: linked as it is, also with link alone, not only after compile
+    auto const type = main_->in.substr(main_->in.rfind(".") + 1);
+    if (auto const it = files().find(type); it != files().end() && it->second.count(STR_COMPILER))
+      if (Compilers::INSTANCE().get(it->second.at(STR_COMPILER))->sourceIsBin())
+        objects.insert(mkn::kul::File(main_->in).mini());
   }
 }

@@ -147,9 +147,12 @@ class Settings : public mkn::kul::yaml::File, public Constants {
   std::array<Settings*, MAX_SUPERS> supers{};
   std::size_t n_supers = 0;
   mkn::kul::hash::map::S2S ps;
+  std::optional<mkn::kul::hash::map::S2S> base_ps;  // ps before its own were resolved into it
   Findables findables_;
   mkn::kul::hash::map::S2S binaries_;
   std::vector<bool> envUsed;  // per env: entry, see ENV_USED, empty: all
+  // the variables its env: sets as they were before it, unset: nullopt
+  std::optional<std::vector<std::pair<std::string, std::optional<std::string>>>> envBefore;
 
   void resolveProperties() KTHROW(SettingsException);
   void preorder(std::vector<Settings*>& files);  // this file, then each super: file's chain

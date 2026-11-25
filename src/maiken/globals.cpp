@@ -35,8 +35,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "mkn/kul/defs.hpp"
 #include "mkn/kul/os.hpp"
 #include "mkn/kul/time.hpp"
+#include "yaml-cpp/yaml.h"
 
 #include <ctime>
+#include <initializer_list>
 #include <memory>
 #include <optional>
 #include <string>
@@ -78,24 +80,32 @@ maiken::AppVars::AppVars() {
   check_set("MKN_LIB_PRE");
 }
 
-void maiken::AppVars::POST_CONSTRUCT() {
+void maiken::AppVars::REPOS(Settings const& settings) {
   auto& pks = AppVars::INSTANCE().pks;
-
-  auto const& settings = Settings::INSTANCE();
   // where dependencies and modules are: the first local: entry of the settings chain, else the
   //  fixed default; a property of the same name changes only what ${MKN_REPO} gives
   pks["MKN_REPO"] = settings.local_dep_repo().value_or(pks.at("mkn.user.repo"));
   pks["MKN_MOD_REPO"] = settings.local_mod_repo().value_or(pks.at("mkn.user.mod_repo"));
+}
 
+void maiken::AppVars::POST_CONSTRUCT() {
+  auto const& settings = Settings::INSTANCE();
+  REPOS(settings);
+  BIN_PROPERTIES(settings, /*resolved=*/false);
+}
+
+void maiken::AppVars::BIN_PROPERTIES(Settings const& settings, bool const resolved) {
+  auto& pks = AppVars::INSTANCE().pks;
   // prebuilt binaries are matched against mkn.bin.key and used for every dependency with
   //  mkn.with.bin, see prebuilt.cpp; settings' property: can set them, MKN_WITH_BIN overrides
   //  mkn.with.bin (e.g. one env: line in a CI workflow), -X overrides both
   //  The settings file's own value over its super: files' (resolved when loaded, their own over
-  //  their super: files'), one using its own name extending theirs or the built-in value
+  //  their super: files'), one using its own name extending theirs or the built-in value. Before
+  //  the file's own are resolved (resolved: false), one of them only extended; after, as resolved
+  auto const& ps = settings.properties();
   for (auto const* const k : {"mkn.bin.key", "mkn.with.bin"}) {
-    auto const& ps = settings.properties();
     if (auto const own = settings.root()[STR_PROPERTY]; own && own[k] && own[k].IsScalar())
-      pks[k] = Properties::EXTEND(k, own[k].Scalar(), ps, settings.file());
+      pks[k] = resolved ? ps.at(k) : Properties::EXTEND(k, own[k].Scalar(), ps, settings.file());
     else if (ps.count(k))
       pks[k] = ps.at(k);
     else

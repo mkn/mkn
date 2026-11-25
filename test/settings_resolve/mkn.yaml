@@ -1,0 +1,8 @@
+#! build -R -P pflag=p
+# settings files' properties resolved, see test/run.py
+name: settings_resolve
+main: main.cpp
+property:
+  pflag: ${not_defined}  # -P replaces it, never resolved
+  mkn.link.rpathing: from_project  # a settings file's: this one not used
+arg: -DPFLAG=${pflag}

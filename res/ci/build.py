@@ -302,8 +302,9 @@ CSHARP_DIR = os.path.join(ROOT, "test", "csharp")
 
 def csharp(mkn_bin, env=None):
     """test/csharp: a C# executable (csc: no objects, its sources linked, the main's too) built
-    and run, its main checking a function from src/"""
+    and run, its main checking a function from src/; then linked alone, the main still in it"""
     run(mkn_bin, "clean build run -x csharp.yml", cwd=CSHARP_DIR, env=env)
+    run(mkn_bin, "link run -x csharp.yml", cwd=CSHARP_DIR, env=env)
 
 
 def default_settings(mkn_bin, vcvars=False):
