@@ -84,21 +84,24 @@ class Properties : public Constants {
   // maiken's own settings file properties (mkn.with.bin, mkn.flags.<part>, ...): set with -X, not
   // -P
   static bool SETTINGS_KEY(std::string const& key);
-  // a property: node's own entries over ps, which holds those it extends
+  // a property: node's own entries over ps, which holds those it extends; one in over (-P, -X)
+  //  is its value there as it is, the file's never read
   static void RESOLVE_OWN(YAML::Node const& node, mkn::kul::hash::map::S2S& ps,
-                          std::string const& file, auto const& resolve) KTHROW(mkn::kul::Exception);
+                          mkn::kul::hash::map::S2S const& over, std::string const& file,
+                          auto const& resolve) KTHROW(mkn::kul::Exception);
 };
 
 void Properties::RESOLVE_OWN(YAML::Node const& node, mkn::kul::hash::map::S2S& ps,
-                             std::string const& file, auto const& resolve)
-    KTHROW(mkn::kul::Exception) {
+                             mkn::kul::hash::map::S2S const& over, std::string const& file,
+                             auto const& resolve) KTHROW(mkn::kul::Exception) {
   ps.setDeletedKey("--DELETED--");
   for (auto it = node.begin(); it != node.end(); ++it) {
     auto const k = it->first.as<std::string>();
-    ps[k] = EXTEND(k, it->second.as<std::string>(), ps, file);
+    ps[k] = over.count(k) ? over.at(k) : EXTEND(k, it->second.as<std::string>(), ps, file);
   }
   for (auto it = node.begin(); it != node.end(); ++it) {
     auto const k = it->first.as<std::string>();
+    if (over.count(k)) continue;
     auto const s = resolve(ps.at(k));
     ps.erase(k);
     ps[k] = s;
